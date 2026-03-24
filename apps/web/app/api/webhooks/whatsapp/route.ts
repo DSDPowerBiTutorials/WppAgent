@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/server/supabase";
-import { ConversationEngine } from "@/lib/server/conversation-engine";
+import { ConversationEngine, type PatientContext } from "@/lib/server/conversation-engine";
 
 const WHATSAPP_API_URL = "https://graph.facebook.com/v21.0";
 
@@ -89,7 +89,7 @@ async function handleIncomingMessage(msg: IncomingMessage) {
   // Find or create patient
   let { data: patient } = await supabase
     .from("patients")
-    .select("id")
+    .select("id, name")
     .eq("organization_id", orgId)
     .eq("phone", msg.from)
     .single();
@@ -98,7 +98,7 @@ async function handleIncomingMessage(msg: IncomingMessage) {
     const { data: newPatient } = await supabase
       .from("patients")
       .insert({ organization_id: orgId, phone: msg.from, name: msg.name })
-      .select("id")
+      .select("id, name")
       .single();
     patient = newPatient;
   }
@@ -154,11 +154,20 @@ async function handleIncomingMessage(msg: IncomingMessage) {
   // If waiting for human, don't auto-reply
   if (conversation.status === "waiting_human") return;
 
-  // Process with AI
+  // Build patient context for personalized AI + tool access
+  const patientCtx: PatientContext = {
+    patientId: patient.id,
+    patientName: patient.name,
+    organizationId: orgId,
+    conversationId: conversation.id,
+  };
+
+  // Process with AI (with function calling for scheduling, etc.)
   const reply = await ConversationEngine.processMessage(
     conversation.id,
     conversation.agent_id,
-    msg.text
+    msg.text,
+    patientCtx
   );
 
   if (reply) {

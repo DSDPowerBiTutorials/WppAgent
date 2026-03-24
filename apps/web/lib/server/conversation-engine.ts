@@ -1,5 +1,6 @@
 ﻿import OpenAI from "openai";
 import { getSupabaseClient } from "./supabase";
+import { AGENT_TOOLS, executeTool, type ToolContext } from "./agent-tools";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -14,6 +15,16 @@ interface AgentData {
   voice_config: Record<string, any>;
   operating_hours: Record<string, any> | null;
 }
+
+/** Additional context about the patient for personalized conversations */
+export interface PatientContext {
+  patientId: string;
+  patientName: string;
+  organizationId: string;
+  conversationId: string;
+}
+
+const MAX_TOOL_ITERATIONS = 5;
 
 const FEATURE_LABELS: Record<string, string> = {
   faq: "Dúvidas Frequentes (FAQ)",
@@ -226,7 +237,7 @@ export class ConversationEngine {
     return this.openai;
   }
 
-  private static async getSystemPrompt(agentId: string): Promise<string> {
+  private static async getSystemPrompt(agentId: string, patient?: PatientContext): Promise<string> {
     const supabase = getSupabaseClient();
     const { data: agent } = await supabase
       .from("agents")
@@ -244,7 +255,12 @@ export class ConversationEngine {
     const voiceInstructions = buildVoiceInstructions(agent.voice_config);
     const hoursInstructions = buildOperatingHoursInstructions(agent.operating_hours);
 
-    return `${basePrompt}${featureInstructions}${voiceInstructions}${hoursInstructions}`;
+    let patientInstructions = "";
+    if (patient) {
+      patientInstructions = `\n\n# CONTEXTO DO PACIENTE\nVocê está conversando com **${patient.patientName}**.\n- Chame o paciente pelo nome.\n- ID do paciente: ${patient.patientId}\n- Use as ferramentas disponíveis para consultar informações e executar ações no sistema (agendar, cancelar, remarcar consultas, etc.).\n- Sempre confirme os dados com o paciente antes de executar uma ação.`;
+    }
+
+    return `${basePrompt}${patientInstructions}${featureInstructions}${voiceInstructions}${hoursInstructions}`;
   }
 
   private static toOpenAIMessages(
@@ -266,17 +282,58 @@ export class ConversationEngine {
 
   private static async generateReply(
     systemPrompt: string,
-    messages: OpenAI.Responses.ResponseInputItem[]
+    messages: OpenAI.Responses.ResponseInputItem[],
+    toolCtx?: ToolContext
   ): Promise<string | null> {
     try {
       const client = this.getClient();
-      const response = await client.responses.create({
-        model: this.MODEL,
-        instructions: systemPrompt,
-        input: messages,
-        max_output_tokens: 500,
-      });
-      return response.output_text || null;
+      const useTools = !!toolCtx;
+
+      let input = [...messages];
+
+      for (let i = 0; i < (useTools ? MAX_TOOL_ITERATIONS : 1); i++) {
+        const response = await client.responses.create({
+          model: this.MODEL,
+          instructions: systemPrompt,
+          input,
+          max_output_tokens: 500,
+          ...(useTools ? { tools: AGENT_TOOLS as any } : {}),
+        });
+
+        // Check if model wants to call tools
+        const toolCalls = response.output.filter(
+          (item: any) => item.type === "function_call"
+        );
+
+        if (toolCalls.length === 0) {
+          // No tool calls → return text
+          return response.output_text || null;
+        }
+
+        // Execute tool calls and feed results back
+        for (const call of toolCalls) {
+          const fc = call as any;
+          const args = JSON.parse(fc.arguments || "{}");
+
+          console.log(`[Tool] ${fc.name}(${JSON.stringify(args)})`);
+          const result = await executeTool(fc.name, args, toolCtx!);
+          console.log(`[Tool] ${fc.name} → ${result.slice(0, 200)}`);
+
+          // Add the function call + output to input for next iteration
+          input = [
+            ...input,
+            ...response.output as any,
+            {
+              type: "function_call_output" as const,
+              call_id: fc.call_id,
+              output: result,
+            },
+          ];
+        }
+      }
+
+      // If we exhausted iterations, return last known text or fallback
+      return "Desculpe, estou com dificuldade para processar sua solicitação. Um atendente irá te ajudar.";
     } catch (err) {
       console.error("OpenAI API error:", err);
       return "Desculpe, estou com uma dificuldade técnica no momento. Um atendente humano irá te ajudar em breve.";
@@ -299,7 +356,8 @@ export class ConversationEngine {
   static async processMessage(
     conversationId: string,
     agentId: string,
-    userMessage: string
+    userMessage: string,
+    patient?: PatientContext
   ): Promise<string | null> {
     const supabase = getSupabaseClient();
 
@@ -315,6 +373,21 @@ export class ConversationEngine {
       content: msg.content,
     }));
 
-    return this.processTestChat(agentId, messages, userMessage);
+    const systemPrompt = await this.getSystemPrompt(agentId, patient);
+    const openaiMessages = this.toOpenAIMessages([
+      ...messages,
+      { role: "user", content: userMessage },
+    ]);
+
+    // Use tools only when we have patient context (real WhatsApp conversation)
+    const toolCtx = patient
+      ? {
+          organizationId: patient.organizationId,
+          patientId: patient.patientId,
+          conversationId,
+        }
+      : undefined;
+
+    return this.generateReply(systemPrompt, openaiMessages, toolCtx);
   }
 }
