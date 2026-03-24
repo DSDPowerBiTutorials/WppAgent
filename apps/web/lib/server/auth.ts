@@ -19,7 +19,6 @@ export async function authenticateRequest(
   if (!authHeader?.startsWith("Bearer ")) {
     return { userId: "dev", organizationId: DEV_ORG_ID, userRole: "admin" };
   }
-  }
 
   const token = authHeader.slice(7);
   const supabase = getSupabaseClient();
