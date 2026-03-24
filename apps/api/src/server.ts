@@ -15,6 +15,8 @@ import { conversationRoutes } from "./routes/conversations.js";
 import { appointmentRoutes } from "./routes/appointments.js";
 import { patientRoutes } from "./routes/patients.js";
 import { analyticsRoutes } from "./routes/analytics.js";
+import { driveRoutes } from "./routes/drive.js";
+import multipart from "@fastify/multipart";
 
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -42,6 +44,10 @@ async function buildServer() {
     timeWindow: "1 minute",
   });
 
+  await app.register(multipart, {
+    limits: { fileSize: 50 * 1024 * 1024 },
+  });
+
   // Routes
   await app.register(healthRoutes, { prefix: "/api" });
   await app.register(webhookRoutes, { prefix: "/api/webhooks" });
@@ -50,6 +56,7 @@ async function buildServer() {
   await app.register(appointmentRoutes, { prefix: "/api/appointments" });
   await app.register(patientRoutes, { prefix: "/api/patients" });
   await app.register(analyticsRoutes, { prefix: "/api/analytics" });
+  await app.register(driveRoutes, { prefix: "/api/drive" });
 
   return app;
 }

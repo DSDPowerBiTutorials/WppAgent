@@ -126,6 +126,28 @@ export interface Message {
 }
 
 // ============================================================
+// Test Chat
+// ============================================================
+export type TestChatRole = "user" | "assistant";
+
+export interface TestChatMessage {
+  role: TestChatRole;
+  content: string;
+}
+
+export interface TestChatRequest {
+  agent_id: string;
+  message: string;
+  history: TestChatMessage[];
+}
+
+export interface TestChatResult {
+  agent_id: string;
+  agent_name: string;
+  reply: string;
+}
+
+// ============================================================
 // Appointment
 // ============================================================
 export type AppointmentStatus =

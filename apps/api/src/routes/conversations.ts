@@ -1,9 +1,50 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { testChatSchema } from "@repo/shared/schemas";
+import { ConversationEngine } from "../engine/conversation.js";
 import { registerAuth } from "../middleware/auth.js";
 import { getSupabaseClient } from "../lib/supabase.js";
 
 export async function conversationRoutes(app: FastifyInstance) {
   registerAuth(app);
+
+  app.post("/test", async (request: FastifyRequest, reply: FastifyReply) => {
+    const orgId = (request as any).organizationId;
+    const parsed = testChatSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
+    }
+
+    const supabase = getSupabaseClient();
+    const { data: agent, error } = await supabase
+      .from("agents")
+      .select("id, name")
+      .eq("id", parsed.data.agent_id)
+      .eq("organization_id", orgId)
+      .single();
+
+    if (error || !agent) {
+      return reply.status(404).send({ error: "Agent not found" });
+    }
+
+    const replyText = await ConversationEngine.processTestChat(
+      agent.id,
+      parsed.data.history,
+      parsed.data.message
+    );
+
+    if (!replyText) {
+      return reply.status(502).send({ error: "No reply generated" });
+    }
+
+    return {
+      data: {
+        agent_id: agent.id,
+        agent_name: agent.name,
+        reply: replyText,
+      },
+    };
+  });
 
   // List conversations
   app.get("/", async (request: FastifyRequest, reply: FastifyReply) => {

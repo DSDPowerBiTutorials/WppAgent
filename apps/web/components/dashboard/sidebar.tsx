@@ -11,6 +11,7 @@ import {
   Users,
   BarChart3,
   Plug,
+  HardDrive,
   Settings,
   ChevronLeft,
   LogOut,
@@ -26,6 +27,7 @@ const sidebarLinks = [
   { href: "/patients", icon: Users, label: "Pacientes" },
   { href: "/analytics", icon: BarChart3, label: "Analytics" },
   { href: "/integrations", icon: Plug, label: "Integrações" },
+  { href: "/drive", icon: HardDrive, label: "Drive" },
   { href: "/settings", icon: Settings, label: "Configurações" },
 ];
 

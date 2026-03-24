@@ -78,13 +78,21 @@ export default function AgentsPage() {
             Configure e gerencie seus agentes de atendimento
           </p>
         </div>
-        <Link
-          href="/agents/new"
-          className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
-        >
-          <Plus size={16} />
-          Novo Agente
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/agents/test"
+            className="rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50"
+          >
+            Chat de teste
+          </Link>
+          <Link
+            href="/agents/new"
+            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+          >
+            <Plus size={16} />
+            Novo Agente
+          </Link>
+        </div>
       </div>
 
       {/* Stats bar */}
@@ -220,8 +228,15 @@ export default function AgentsPage() {
                           onClick={() => setPreviewAgent(agent)}
                           className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
-                          <Eye size={14} /> Testar
+                          <Eye size={14} /> Simular
                         </button>
+                        <Link
+                          href={`/agents/test?agentId=${agent.id}`}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => setMenuOpen(null)}
+                        >
+                          <MessageCircle size={14} /> Teste real
+                        </Link>
                         <button
                           onClick={() => handleDuplicate(agent.id)}
                           className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"

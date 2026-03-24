@@ -109,6 +109,17 @@ export const incomingMessageSchema = z.object({
   timestamp: z.string(),
 });
 
+export const testChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().trim().min(1).max(4000),
+});
+
+export const testChatSchema = z.object({
+  agent_id: z.string().uuid(),
+  message: z.string().trim().min(1).max(4000),
+  history: z.array(testChatMessageSchema).max(20).default([]),
+});
+
 // ============================================================
 // Pagination & Filters
 // ============================================================
