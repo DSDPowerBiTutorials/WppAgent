@@ -17,6 +17,9 @@ import {
   Eye,
   EyeOff,
   Key,
+  Plus,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -41,6 +44,11 @@ export default function SettingsPage() {
   const [apiInfo, setApiInfo] = useState<any>(null);
   const [loadingApiInfo, setLoadingApiInfo] = useState(false);
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [loadingKeys, setLoadingKeys] = useState(false);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [createdKey, setCreatedKey] = useState<string | null>(null);
+  const [creatingKey, setCreatingKey] = useState(false);
 
   const copyToClipboard = useCallback((text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -70,7 +78,58 @@ export default function SettingsPage() {
     if (activeTab === "api" && !apiInfo) {
       fetchApiInfo();
     }
+    if (activeTab === "security" && apiKeys.length === 0 && !loadingKeys) {
+      fetchApiKeys();
+    }
   }, [activeTab, apiInfo, fetchApiInfo]);
+
+  const fetchApiKeys = useCallback(async () => {
+    setLoadingKeys(true);
+    try {
+      const res = await fetch("/api/settings/api-keys");
+      if (res.ok) {
+        const data = await res.json();
+        setApiKeys(data.keys || []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingKeys(false);
+    }
+  }, []);
+
+  const createApiKey = useCallback(async () => {
+    if (!newKeyName.trim()) return;
+    setCreatingKey(true);
+    try {
+      const res = await fetch("/api/settings/api-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newKeyName.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCreatedKey(data.key.rawKey);
+        setNewKeyName("");
+        fetchApiKeys();
+      }
+    } catch {
+      // silent
+    } finally {
+      setCreatingKey(false);
+    }
+  }, [newKeyName, fetchApiKeys]);
+
+  const revokeApiKey = useCallback(async (keyId: string) => {
+    try {
+      const res = await fetch(`/api/settings/api-keys?id=${keyId}`, { method: "DELETE" });
+      if (res.ok) {
+        setApiKeys((prev) => prev.filter((k) => k.id !== keyId));
+      }
+    } catch {
+      // silent
+    }
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -439,43 +498,65 @@ export default function SettingsPage() {
                   <h4 className="text-sm font-semibold text-gray-800 mb-3">Como Integrar</h4>
                   <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-4 space-y-3">
                     <div>
-                      <p className="text-xs font-semibold text-emerald-800 mb-1">1. Enviar mensagem de teste via API</p>
+                      <p className="text-xs font-semibold text-emerald-800 mb-1">1. Crie uma API Key</p>
+                      <p className="text-xs text-emerald-700">
+                        Acesse a aba <span className="font-medium">Segurança</span> e crie uma chave de API. Copie a chave gerada — ela só será exibida uma vez.
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-800 mb-1">2. Enviar mensagem via API</p>
                       <div className="rounded bg-gray-900 p-3 relative">
                         <button
                           onClick={() => copyToClipboard(
-                            `curl -X POST ${apiInfo?.baseUrl || (typeof window !== "undefined" ? window.location.origin : "YOUR_URL")}/api/conversations/test \\\n  -H "Content-Type: application/json" \\\n  -d '{"agentId": "AGENT_ID", "message": "Olá"}'`,
-                            "curl-test"
+                            `curl -X POST ${apiInfo?.baseUrl || (typeof window !== "undefined" ? window.location.origin : "YOUR_URL")}/api/v1/chat \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer wpp_YOUR_API_KEY" \\\n  -d '{"message": "Olá, preciso agendar uma consulta", "patientPhone": "+5511999999999", "patientName": "João Silva"}'`,
+                            "curl-chat"
                           )}
                           className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white"
                         >
-                          {copiedField === "curl-test" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                          {copiedField === "curl-chat" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                         </button>
                         <pre className="text-[11px] text-emerald-300 font-mono whitespace-pre-wrap">
-{`curl -X POST ${apiInfo?.baseUrl || "YOUR_URL"}/api/conversations/test \\
+{`curl -X POST ${apiInfo?.baseUrl || "YOUR_URL"}/api/v1/chat \\
   -H "Content-Type: application/json" \\
-  -d '{"agentId": "AGENT_ID", "message": "Olá"}'`}
+  -H "Authorization: Bearer wpp_YOUR_API_KEY" \\
+  -d '{
+    "message": "Olá, preciso agendar uma consulta",
+    "patientPhone": "+5511999999999",
+    "patientName": "João Silva"
+  }'`}
                         </pre>
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-emerald-800 mb-1">2. Listar agentes disponíveis</p>
+                      <p className="text-xs font-semibold text-emerald-800 mb-1">3. Listar agentes disponíveis</p>
                       <div className="rounded bg-gray-900 p-3 relative">
                         <button
                           onClick={() => copyToClipboard(
-                            `curl ${apiInfo?.baseUrl || (typeof window !== "undefined" ? window.location.origin : "YOUR_URL")}/api/agents`,
+                            `curl ${apiInfo?.baseUrl || (typeof window !== "undefined" ? window.location.origin : "YOUR_URL")}/api/agents \\\n  -H "Authorization: Bearer wpp_YOUR_API_KEY"`,
                             "curl-agents"
                           )}
                           className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white"
                         >
                           {copiedField === "curl-agents" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                         </button>
-                        <pre className="text-[11px] text-emerald-300 font-mono">
-{`curl ${apiInfo?.baseUrl || "YOUR_URL"}/api/agents`}
+                        <pre className="text-[11px] text-emerald-300 font-mono whitespace-pre-wrap">
+{`curl ${apiInfo?.baseUrl || "YOUR_URL"}/api/agents \\
+  -H "Authorization: Bearer wpp_YOUR_API_KEY"`}
                         </pre>
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-emerald-800 mb-1">3. Configurar webhook no Meta Business</p>
+                      <p className="text-xs font-semibold text-emerald-800 mb-1">4. Parâmetros do /api/v1/chat</p>
+                      <div className="text-xs text-emerald-700 space-y-1">
+                        <p>• <code className="bg-emerald-100 px-1 rounded">message</code> (obrigatório) — mensagem do paciente</p>
+                        <p>• <code className="bg-emerald-100 px-1 rounded">patientPhone</code> — telefone para continuidade de contexto</p>
+                        <p>• <code className="bg-emerald-100 px-1 rounded">patientName</code> — nome (usado ao criar novo paciente)</p>
+                        <p>• <code className="bg-emerald-100 px-1 rounded">agentId</code> — ID do agente específico (opcional)</p>
+                        <p>• <code className="bg-emerald-100 px-1 rounded">conversationId</code> — continuar conversa existente</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-800 mb-1">5. Configurar webhook no Meta Business</p>
                       <p className="text-xs text-emerald-700">
                         Acesse o <span className="font-medium">Meta for Developers → Seu App → WhatsApp → Configuração</span> e
                         adicione a URL de webhook listada acima. Use o Verify Token configurado na aba WhatsApp.
@@ -548,6 +629,126 @@ export default function SettingsPage() {
             {activeTab === "security" && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Segurança</h3>
+
+                {/* ── API Keys Section ── */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                        <Key size={14} />
+                        Chaves de API
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Crie chaves para integrar sistemas externos com sua API de forma segura.
+                      </p>
+                    </div>
+                    <button
+                      onClick={fetchApiKeys}
+                      disabled={loadingKeys}
+                      className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      <RefreshCw size={12} className={loadingKeys ? "animate-spin" : ""} />
+                      Atualizar
+                    </button>
+                  </div>
+
+                  {/* Created key alert */}
+                  {createdKey && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 mb-4">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-amber-800">
+                            Copie sua chave agora — ela não será exibida novamente!
+                          </p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <code className="block text-xs font-mono text-amber-900 bg-amber-100 rounded px-2 py-1 break-all flex-1">
+                              {createdKey}
+                            </code>
+                            <button
+                              onClick={() => { copyToClipboard(createdKey, "new-key"); }}
+                              className="p-1.5 text-amber-600 hover:text-amber-800 shrink-0"
+                            >
+                              {copiedField === "new-key" ? <Check size={14} /> : <Copy size={14} />}
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => setCreatedKey(null)}
+                            className="mt-2 text-xs text-amber-700 underline hover:text-amber-900"
+                          >
+                            Já copiei, fechar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Create new key */}
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={newKeyName}
+                      onChange={(e) => setNewKeyName(e.target.value)}
+                      placeholder="Nome da chave (ex: Sistema Clínica)"
+                      className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-300"
+                      onKeyDown={(e) => e.key === "Enter" && createApiKey()}
+                    />
+                    <button
+                      onClick={createApiKey}
+                      disabled={creatingKey || !newKeyName.trim()}
+                      className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      <Plus size={14} />
+                      Criar
+                    </button>
+                  </div>
+
+                  {/* Existing keys list */}
+                  {apiKeys.length > 0 ? (
+                    <div className="space-y-2">
+                      {apiKeys.map((key) => (
+                        <div key={key.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900">{key.name}</p>
+                            <div className="flex items-center gap-3 mt-1">
+                              <code className="text-xs text-gray-500 font-mono">{key.key_prefix}••••••</code>
+                              <span className="text-[10px] text-gray-400">
+                                Criada em {new Date(key.created_at).toLocaleDateString("pt-BR")}
+                              </span>
+                              {key.last_used_at && (
+                                <span className="text-[10px] text-gray-400">
+                                  Usada em {new Date(key.last_used_at).toLocaleDateString("pt-BR")}
+                                </span>
+                              )}
+                              {key.expires_at && (
+                                <span className={clsx(
+                                  "text-[10px]",
+                                  new Date(key.expires_at) < new Date() ? "text-red-500" : "text-gray-400"
+                                )}>
+                                  {new Date(key.expires_at) < new Date() ? "Expirada" : `Expira em ${new Date(key.expires_at).toLocaleDateString("pt-BR")}`}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => revokeApiKey(key.id)}
+                            className="ml-2 p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            title="Revogar chave"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-xs text-gray-400 border border-dashed border-gray-200 rounded-lg">
+                      Nenhuma chave de API criada.
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-gray-100 pt-6" />
+
                 <div className="space-y-4">
                   <div className="rounded-lg border border-gray-200 p-4">
                     <div className="flex items-center justify-between">
