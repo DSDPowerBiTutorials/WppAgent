@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import AgentForm from "@/components/dashboard/agent-form";
 import type { AgentFormData } from "@/components/dashboard/agent-form";
 import { useAgentsContext } from "@/lib/agents-context";
@@ -11,16 +12,33 @@ export default function EditAgentPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const { getAgent, updateAgent } = useAgentsContext();
+  const { getAgent, fetchAgent, updateAgent, loading } = useAgentsContext();
   const { toast } = useToast();
+  const [fetching, setFetching] = useState(false);
 
   const agent = getAgent(id);
+
+  // Fetch from API if not found in context (e.g., direct page load)
+  useEffect(() => {
+    if (!agent && !loading && !fetching) {
+      setFetching(true);
+      fetchAgent(id).finally(() => setFetching(false));
+    }
+  }, [agent, loading, fetching, fetchAgent, id]);
 
   const handleSubmit = async (data: AgentFormData) => {
     await updateAgent(id, data);
     toast("success", `Agente "${data.name}" atualizado com sucesso!`);
     router.push("/agents");
   };
+
+  if (loading || fetching) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={32} className="animate-spin text-emerald-600" />
+      </div>
+    );
+  }
 
   if (!agent) {
     return (

@@ -14,6 +14,7 @@ import {
   MoreVertical,
   Eye,
   Search,
+  Loader2,
 } from "lucide-react";
 import clsx from "clsx";
 import AgentPreview from "@/components/dashboard/agent-preview";
@@ -31,7 +32,7 @@ const featureLabels: Record<string, string> = {
 };
 
 export default function AgentsPage() {
-  const { agents, toggleAgent, duplicateAgent, deleteAgent } = useAgentsContext();
+  const { agents, loading, toggleAgent, duplicateAgent, deleteAgent } = useAgentsContext();
   const { toast } = useToast();
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [previewAgent, setPreviewAgent] = useState<Agent | null>(null);
@@ -135,6 +136,11 @@ export default function AgentsPage() {
 
       <div className="flex gap-6">
         {/* Agent cards */}
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center py-20">
+            <Loader2 size={32} className="animate-spin text-emerald-600" />
+          </div>
+        ) : (
         <div className={clsx("grid flex-1 grid-cols-1 gap-5", previewAgent ? "lg:grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3")}>
           {filtered.map((agent) => (
             <div
@@ -279,6 +285,7 @@ export default function AgentsPage() {
             </div>
           ))}
         </div>
+        )}
 
         {/* Preview panel */}
         {previewAgent && (

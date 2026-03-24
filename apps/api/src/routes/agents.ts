@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { registerAuth } from "../middleware/auth.js";
 import { getSupabaseClient } from "../lib/supabase.js";
+import { createAgentSchema, updateAgentSchema } from "@repo/shared/schemas";
 
 export async function agentRoutes(app: FastifyInstance) {
   registerAuth(app);
@@ -40,12 +41,15 @@ export async function agentRoutes(app: FastifyInstance) {
   // Create agent
   app.post("/", async (request: FastifyRequest, reply: FastifyReply) => {
     const orgId = (request as any).organizationId;
-    const body = request.body as Record<string, unknown>;
+    const parsed = createAgentSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
+    }
     const supabase = getSupabaseClient();
 
     const { data, error } = await supabase
       .from("agents")
-      .insert({ ...body, organization_id: orgId })
+      .insert({ ...parsed.data, organization_id: orgId })
       .select()
       .single();
 
@@ -57,12 +61,15 @@ export async function agentRoutes(app: FastifyInstance) {
   app.patch("/:id", async (request: FastifyRequest, reply: FastifyReply) => {
     const orgId = (request as any).organizationId;
     const { id } = request.params as { id: string };
-    const body = request.body as Record<string, unknown>;
+    const parsed = updateAgentSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
+    }
     const supabase = getSupabaseClient();
 
     const { data, error } = await supabase
       .from("agents")
-      .update(body)
+      .update(parsed.data)
       .eq("id", id)
       .eq("organization_id", orgId)
       .select()

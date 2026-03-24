@@ -127,9 +127,9 @@ export default function IntegrationsPage() {
                   <span className="text-xs text-gray-400">{categoryLabels[integration.category]}</span>
                 </div>
               </div>
-              {integration.connected && integration.status && (
-                <span className={clsx("rounded-full px-2 py-0.5 text-xs font-medium", statusBadge[integration.status].color)}>
-                  {statusBadge[integration.status].label}
+              {integration.connected && integration.status && statusBadge[integration.status] && (
+                <span className={clsx("rounded-full px-2 py-0.5 text-xs font-medium", statusBadge[integration.status]!.color)}>
+                  {statusBadge[integration.status]!.label}
                 </span>
               )}
             </div>

@@ -183,7 +183,7 @@ const TIMEZONES = [
   "America/Rio_Branco",
 ];
 
-const DEFAULT_PROMPT = PROMPT_TEMPLATES[0].prompt;
+const DEFAULT_PROMPT = PROMPT_TEMPLATES[0]?.prompt ?? "";
 
 const EMPTY_FORM: AgentFormData = {
   name: "",
@@ -967,8 +967,8 @@ export default function AgentForm({ initialData, onSubmit, onCancel, isEdit }: A
                             />
                             <span className="ml-2 text-xs text-gray-400">
                               {(() => {
-                                const [sh, sm] = dayData.start.split(":").map(Number);
-                                const [eh, em] = dayData.end.split(":").map(Number);
+                                const [sh = 0, sm = 0] = dayData.start.split(":").map(Number);
+                                const [eh = 0, em = 0] = dayData.end.split(":").map(Number);
                                 const mins = (eh * 60 + em) - (sh * 60 + sm);
                                 const h = Math.floor(mins / 60);
                                 const m = mins % 60;

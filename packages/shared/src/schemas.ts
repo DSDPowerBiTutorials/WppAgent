@@ -19,6 +19,7 @@ export const voiceConfigSchema = z.object({
   tone: z.number().min(0).max(100),
   speed: z.number().min(0).max(100),
   accent: z.enum(["local", "neutral"]),
+  personality: z.enum(["formal", "friendly", "empathetic", "professional"]).default("friendly"),
 });
 
 export const agentFeatures = [
@@ -36,6 +37,7 @@ export const createAgentSchema = z.object({
   system_prompt: z.string().min(10).max(10000),
   voice_config: voiceConfigSchema,
   features: z.array(z.enum(agentFeatures)),
+  feature_config: z.record(z.unknown()).default({}),
   languages: z.array(z.string()).min(1),
   active: z.boolean().default(true),
   operating_hours: z
@@ -49,6 +51,7 @@ export const createAgentSchema = z.object({
           })
           .nullable()
       ),
+      outsideMessage: z.string().default(""),
     })
     .nullable()
     .optional(),
