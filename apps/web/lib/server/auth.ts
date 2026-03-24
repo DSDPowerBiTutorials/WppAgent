@@ -14,20 +14,11 @@ export async function authenticateRequest(
 ): Promise<AuthContext | NextResponse> {
   const authHeader = request.headers.get("authorization");
 
-  // Bypass: no token + (dev mode OR AUTH_BYPASS enabled) → use fixed org
-  // AUTH_BYPASS allows pre-auth access in production until login is implemented
-  if (
-    !authHeader?.startsWith("Bearer ") &&
-    (process.env.NODE_ENV !== "production" || process.env.AUTH_BYPASS === "true")
-  ) {
+  // No token → use fixed org (auth system not yet implemented)
+  // When login/auth is added, remove this bypass
+  if (!authHeader?.startsWith("Bearer ")) {
     return { userId: "dev", organizationId: DEV_ORG_ID, userRole: "admin" };
   }
-
-  if (!authHeader?.startsWith("Bearer ")) {
-    return NextResponse.json(
-      { error: "Missing or invalid token" },
-      { status: 401 }
-    );
   }
 
   const token = authHeader.slice(7);
