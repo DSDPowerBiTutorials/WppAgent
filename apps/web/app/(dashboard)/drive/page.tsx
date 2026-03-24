@@ -142,7 +142,7 @@ export default function DrivePage() {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("category", uploadCategory);
-        await api.upload<{ data: DriveFile }>("/drive/upload", formData);
+        await api.upload<{ data: DriveFile }>("/drive", formData);
         successCount++;
       } catch (err: any) {
         toast("error", `Erro ao enviar "${file.name}": ${err.message}`);

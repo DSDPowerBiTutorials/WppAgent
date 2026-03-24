@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, isAuthError } from "@/lib/server/auth";
 import { getSupabaseClient } from "@/lib/server/supabase";
 import { testChatSchema } from "@repo/shared/schemas";

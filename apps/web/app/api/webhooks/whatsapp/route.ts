@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/server/supabase";
 import { ConversationEngine } from "@/lib/server/conversation-engine";
 
