@@ -12,8 +12,6 @@ import { healthRoutes } from "./routes/health.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import { agentRoutes } from "./routes/agents.js";
 import { conversationRoutes } from "./routes/conversations.js";
-import { appointmentRoutes } from "./routes/appointments.js";
-import { patientRoutes } from "./routes/patients.js";
 import { analyticsRoutes } from "./routes/analytics.js";
 import { driveRoutes } from "./routes/drive.js";
 import multipart from "@fastify/multipart";
@@ -53,8 +51,6 @@ async function buildServer() {
   await app.register(webhookRoutes, { prefix: "/api/webhooks" });
   await app.register(agentRoutes, { prefix: "/api/agents" });
   await app.register(conversationRoutes, { prefix: "/api/conversations" });
-  await app.register(appointmentRoutes, { prefix: "/api/appointments" });
-  await app.register(patientRoutes, { prefix: "/api/patients" });
   await app.register(analyticsRoutes, { prefix: "/api/analytics" });
   await app.register(driveRoutes, { prefix: "/api/drive" });
 
