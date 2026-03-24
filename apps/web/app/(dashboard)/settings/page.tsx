@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Building2,
   Globe,
@@ -9,12 +9,21 @@ import {
   Users,
   MessageSquare,
   Save,
+  Code2,
+  Copy,
+  Check,
+  ExternalLink,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Key,
 } from "lucide-react";
 import clsx from "clsx";
 
 const tabs = [
   { key: "general", label: "Geral", icon: Building2 },
   { key: "whatsapp", label: "WhatsApp", icon: MessageSquare },
+  { key: "api", label: "API Settings", icon: Code2 },
   { key: "notifications", label: "Notificações", icon: Bell },
   { key: "team", label: "Equipe", icon: Users },
   { key: "security", label: "Segurança", icon: Shield },
@@ -28,6 +37,40 @@ const mockTeam = [
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [apiInfo, setApiInfo] = useState<any>(null);
+  const [loadingApiInfo, setLoadingApiInfo] = useState(false);
+  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+
+  const copyToClipboard = useCallback((text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  }, []);
+
+  const toggleSecret = useCallback((field: string) => {
+    setShowSecrets((prev) => ({ ...prev, [field]: !prev[field] }));
+  }, []);
+
+  const fetchApiInfo = useCallback(async () => {
+    setLoadingApiInfo(true);
+    try {
+      const res = await fetch("/api/settings/api-info");
+      if (res.ok) {
+        setApiInfo(await res.json());
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingApiInfo(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "api" && !apiInfo) {
+      fetchApiInfo();
+    }
+  }, [activeTab, apiInfo, fetchApiInfo]);
 
   return (
     <div className="space-y-6">
@@ -183,6 +226,279 @@ export default function SettingsPage() {
                     <Save size={14} />
                     Salvar Configuração
                   </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "api" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">API Settings</h3>
+                  <button
+                    onClick={fetchApiInfo}
+                    disabled={loadingApiInfo}
+                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} className={loadingApiInfo ? "animate-spin" : ""} />
+                    Atualizar
+                  </button>
+                </div>
+
+                {/* Base URL */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-800 mb-3">URL Base da Aplicação</h4>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <div className="flex items-center justify-between">
+                      <code className="text-sm text-emerald-600 font-mono">
+                        {apiInfo?.baseUrl || (typeof window !== "undefined" ? window.location.origin : "...")}
+                      </code>
+                      <button
+                        onClick={() => copyToClipboard(apiInfo?.baseUrl || window.location.origin, "baseUrl")}
+                        className="ml-2 p-1 text-gray-400 hover:text-gray-600"
+                      >
+                        {copiedField === "baseUrl" ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* API Endpoints */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-800 mb-3">Endpoints da API</h4>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Todos os endpoints disponíveis para integração com sistemas externos.
+                  </p>
+                  <div className="space-y-2">
+                    {(apiInfo?.endpoints || [
+                      { method: "GET", path: "/api/health", description: "Verificar status da API" },
+                      { method: "GET", path: "/api/agents", description: "Listar agentes" },
+                      { method: "POST", path: "/api/agents", description: "Criar agente" },
+                      { method: "GET", path: "/api/agents/:id", description: "Detalhes do agente" },
+                      { method: "PUT", path: "/api/agents/:id", description: "Atualizar agente" },
+                      { method: "DELETE", path: "/api/agents/:id", description: "Remover agente" },
+                      { method: "GET", path: "/api/conversations", description: "Listar conversas" },
+                      { method: "POST", path: "/api/conversations", description: "Criar conversa" },
+                      { method: "GET", path: "/api/conversations/:id", description: "Detalhes da conversa" },
+                      { method: "GET", path: "/api/conversations/:id/messages", description: "Mensagens da conversa" },
+                      { method: "POST", path: "/api/conversations/:id/messages", description: "Enviar mensagem" },
+                      { method: "POST", path: "/api/conversations/test", description: "Chat de teste com IA" },
+                      { method: "GET", path: "/api/analytics", description: "Dados analíticos" },
+                      { method: "GET", path: "/api/drive", description: "Listar arquivos" },
+                      { method: "POST", path: "/api/drive", description: "Upload de arquivo" },
+                      { method: "DELETE", path: "/api/drive/:id", description: "Remover arquivo" },
+                      { method: "GET/POST", path: "/api/webhooks/whatsapp", description: "Webhook do WhatsApp (Meta)" },
+                    ]).map((ep: any, i: number) => (
+                      <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-100 bg-white px-3 py-2">
+                        <span className={clsx(
+                          "inline-flex min-w-[72px] items-center justify-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                          ep.method === "GET" && "bg-blue-50 text-blue-600",
+                          ep.method === "POST" && "bg-green-50 text-green-600",
+                          ep.method === "PUT" && "bg-amber-50 text-amber-600",
+                          ep.method === "DELETE" && "bg-red-50 text-red-600",
+                          ep.method === "GET/POST" && "bg-purple-50 text-purple-600",
+                        )}>
+                          {ep.method}
+                        </span>
+                        <code className="text-xs font-mono text-gray-700 flex-1">{ep.path}</code>
+                        <span className="text-xs text-gray-400 hidden md:block">{ep.description}</span>
+                        <button
+                          onClick={() => copyToClipboard(ep.path, `ep-${i}`)}
+                          className="p-1 text-gray-300 hover:text-gray-500"
+                        >
+                          {copiedField === `ep-${i}` ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Webhook URLs */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-800 mb-3">URLs de Webhook</h4>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Configure estas URLs em serviços externos para receber eventos.
+                  </p>
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-gray-200 p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-medium text-gray-700">WhatsApp Webhook (Meta Business)</p>
+                        <button
+                          onClick={() => copyToClipboard(
+                            `${apiInfo?.baseUrl || (typeof window !== "undefined" ? window.location.origin : "")}/api/webhooks/whatsapp`,
+                            "webhook-whatsapp"
+                          )}
+                          className="p-1 text-gray-400 hover:text-gray-600"
+                        >
+                          {copiedField === "webhook-whatsapp" ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                        </button>
+                      </div>
+                      <code className="text-xs text-emerald-600 font-mono break-all">
+                        {apiInfo?.webhooks?.whatsapp || `${typeof window !== "undefined" ? window.location.origin : "..."}/api/webhooks/whatsapp`}
+                      </code>
+                      <p className="mt-2 text-[10px] text-gray-400">
+                        Use esta URL na configuração do webhook da Meta Cloud API → Webhook Callback URL
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-medium text-gray-700">Health Check</p>
+                        <button
+                          onClick={() => copyToClipboard(
+                            `${apiInfo?.baseUrl || (typeof window !== "undefined" ? window.location.origin : "")}/api/health`,
+                            "webhook-health"
+                          )}
+                          className="p-1 text-gray-400 hover:text-gray-600"
+                        >
+                          {copiedField === "webhook-health" ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                        </button>
+                      </div>
+                      <code className="text-xs text-emerald-600 font-mono break-all">
+                        {apiInfo?.webhooks?.health || `${typeof window !== "undefined" ? window.location.origin : "..."}/api/health`}
+                      </code>
+                      <p className="mt-2 text-[10px] text-gray-400">
+                        Endpoint para verificar se a API está ativa. Use em uptime monitors (UptimeRobot, Pingdom, etc.)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* API Keys / Tokens */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-800 mb-3">Chaves e Tokens</h4>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Credenciais para aplicações externas se conectarem a esta plataforma.
+                  </p>
+                  <div className="space-y-3">
+                    {[
+                      { label: "Supabase URL", value: apiInfo?.keys?.supabaseUrl, field: "supabase-url", secret: false },
+                      { label: "Supabase Anon Key (pública)", value: apiInfo?.keys?.supabaseAnonKey, field: "supabase-anon", secret: false },
+                      { label: "WhatsApp Verify Token", value: apiInfo?.keys?.whatsappVerifyToken, field: "wa-verify", secret: true },
+                      { label: "OpenAI Model", value: apiInfo?.keys?.openaiModel, field: "openai-model", secret: false },
+                      { label: "OpenAI Base URL", value: apiInfo?.keys?.openaiBaseUrl, field: "openai-base", secret: false },
+                    ].map((item) => (
+                      <div key={item.field} className="rounded-lg border border-gray-200 p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-gray-700">{item.label}</p>
+                          <div className="flex items-center gap-1">
+                            {item.secret && (
+                              <button
+                                onClick={() => toggleSecret(item.field)}
+                                className="p-1 text-gray-400 hover:text-gray-600"
+                              >
+                                {showSecrets[item.field] ? <EyeOff size={12} /> : <Eye size={12} />}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => item.value && copyToClipboard(item.value, item.field)}
+                              className="p-1 text-gray-400 hover:text-gray-600"
+                            >
+                              {copiedField === item.field ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                            </button>
+                          </div>
+                        </div>
+                        <code className="mt-1 block text-xs font-mono text-gray-500 break-all">
+                          {item.value
+                            ? item.secret && !showSecrets[item.field]
+                              ? "••••••••••••••••••••"
+                              : item.value
+                            : "—"}
+                        </code>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Environment Variables */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-800 mb-3">Variáveis de Ambiente Necessárias</h4>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Configure estas variáveis no servidor (Vercel, .env, etc.) para o funcionamento completo.
+                  </p>
+                  <div className="rounded-lg border border-gray-200 overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium text-gray-600">Variável</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-600">Descrição</th>
+                          <th className="px-3 py-2 text-center font-medium text-gray-600">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {(apiInfo?.envVars || [
+                          { name: "SUPABASE_URL", description: "URL do projeto Supabase", configured: false },
+                          { name: "SUPABASE_SERVICE_ROLE_KEY", description: "Chave admin do Supabase", configured: false },
+                          { name: "OPENAI_API_KEY", description: "Chave da API OpenAI", configured: false },
+                          { name: "OPENAI_MODEL", description: "Modelo de IA (ex: gpt-4.1)", configured: false },
+                          { name: "WHATSAPP_ACCESS_TOKEN", description: "Token de acesso Meta", configured: false },
+                          { name: "WHATSAPP_VERIFY_TOKEN", description: "Token de verificação webhook", configured: false },
+                          { name: "WHATSAPP_PHONE_NUMBER_ID", description: "ID do número WhatsApp", configured: false },
+                          { name: "NEXT_PUBLIC_SUPABASE_URL", description: "URL pública Supabase", configured: false },
+                          { name: "NEXT_PUBLIC_SUPABASE_ANON_KEY", description: "Chave pública Supabase", configured: false },
+                        ]).map((env: any) => (
+                          <tr key={env.name}>
+                            <td className="px-3 py-2 font-mono text-gray-700">{env.name}</td>
+                            <td className="px-3 py-2 text-gray-500">{env.description}</td>
+                            <td className="px-3 py-2 text-center">
+                              <span className={clsx(
+                                "inline-flex h-2 w-2 rounded-full",
+                                env.configured ? "bg-emerald-400" : "bg-gray-300"
+                              )} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Integration Guide */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-800 mb-3">Como Integrar</h4>
+                  <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-4 space-y-3">
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-800 mb-1">1. Enviar mensagem de teste via API</p>
+                      <div className="rounded bg-gray-900 p-3 relative">
+                        <button
+                          onClick={() => copyToClipboard(
+                            `curl -X POST ${apiInfo?.baseUrl || (typeof window !== "undefined" ? window.location.origin : "YOUR_URL")}/api/conversations/test \\\n  -H "Content-Type: application/json" \\\n  -d '{"agentId": "AGENT_ID", "message": "Olá"}'`,
+                            "curl-test"
+                          )}
+                          className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white"
+                        >
+                          {copiedField === "curl-test" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                        </button>
+                        <pre className="text-[11px] text-emerald-300 font-mono whitespace-pre-wrap">
+{`curl -X POST ${apiInfo?.baseUrl || "YOUR_URL"}/api/conversations/test \\
+  -H "Content-Type: application/json" \\
+  -d '{"agentId": "AGENT_ID", "message": "Olá"}'`}
+                        </pre>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-800 mb-1">2. Listar agentes disponíveis</p>
+                      <div className="rounded bg-gray-900 p-3 relative">
+                        <button
+                          onClick={() => copyToClipboard(
+                            `curl ${apiInfo?.baseUrl || (typeof window !== "undefined" ? window.location.origin : "YOUR_URL")}/api/agents`,
+                            "curl-agents"
+                          )}
+                          className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white"
+                        >
+                          {copiedField === "curl-agents" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                        </button>
+                        <pre className="text-[11px] text-emerald-300 font-mono">
+{`curl ${apiInfo?.baseUrl || "YOUR_URL"}/api/agents`}
+                        </pre>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-800 mb-1">3. Configurar webhook no Meta Business</p>
+                      <p className="text-xs text-emerald-700">
+                        Acesse o <span className="font-medium">Meta for Developers → Seu App → WhatsApp → Configuração</span> e
+                        adicione a URL de webhook listada acima. Use o Verify Token configurado na aba WhatsApp.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
