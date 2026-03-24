@@ -153,6 +153,43 @@ export const AGENT_TOOLS = [
       required: ["reason"] as string[],
     },
   },
+  {
+    type: "function" as const,
+    name: "search_exams",
+    description:
+      "Busca exames e procedimentos disponíveis na clínica pelo nome ou categoria. Use quando o paciente perguntar sobre exames, procedimentos ou serviços disponíveis.",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        query: {
+          type: "string" as const,
+          description: "Nome ou parte do nome do exame (ex: 'ultrassonografia', 'hemograma', 'raio x')",
+        },
+        category: {
+          type: "string" as const,
+          description: "Categoria: 'coleta' (sangue/urina), 'imagem', 'ginecologicos', 'outros'",
+          enum: ["coleta", "imagem", "ginecologicos", "outros"],
+        },
+      },
+      required: [] as string[],
+    },
+  },
+  {
+    type: "function" as const,
+    name: "get_exam_details",
+    description:
+      "Retorna detalhes completos de um exame: preparo necessário, se precisa de pedido médico, e observações. Use quando o paciente perguntar sobre preparo ou requisitos de um exame específico.",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        exam_name: {
+          type: "string" as const,
+          description: "Nome exato ou aproximado do exame",
+        },
+      },
+      required: ["exam_name"] as string[],
+    },
+  },
 ] as const;
 
 // ─── Tool executor ──────────────────────────────────────────
@@ -404,6 +441,54 @@ export async function executeTool(
         success: true,
         message: "Conversa transferida para atendente humano",
       });
+    }
+
+    // ── Search exams catalog ──────────────────────────────
+    case "search_exams": {
+      const query = args.query as string | undefined;
+      const category = args.category as string | undefined;
+
+      let q = supabase
+        .from("exams_catalog")
+        .select("id, name, category, requires_medical_order")
+        .eq("organization_id", ctx.organizationId)
+        .eq("active", true)
+        .order("name")
+        .limit(15);
+
+      if (query) {
+        q = q.ilike("name", `%${query}%`);
+      }
+      if (category) {
+        q = q.eq("category", category);
+      }
+
+      const { data, error } = await q;
+
+      if (error)
+        return JSON.stringify({ error: "Falha na busca: " + error.message });
+      if (!data || data.length === 0)
+        return JSON.stringify({ message: "Nenhum exame encontrado com esse critério" });
+
+      return JSON.stringify({ results: data, total: data.length });
+    }
+
+    // ── Get exam details / preparation ────────────────────
+    case "get_exam_details": {
+      const examName = args.exam_name as string;
+
+      const { data } = await supabase
+        .from("exams_catalog")
+        .select("name, category, preparation, requires_medical_order, medical_order_notes")
+        .eq("organization_id", ctx.organizationId)
+        .eq("active", true)
+        .ilike("name", `%${examName}%`)
+        .limit(5);
+
+      if (!data || data.length === 0)
+        return JSON.stringify({ error: "Exame não encontrado" });
+
+      return JSON.stringify({ exams: data });
     }
 
     default:

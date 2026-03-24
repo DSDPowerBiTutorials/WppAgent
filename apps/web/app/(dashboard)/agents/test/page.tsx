@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Bot, Loader2, RotateCcw, Send, Sparkles, User } from "lucide-react";
+import { ArrowLeft, Bot, Loader2, RotateCcw, Send, Sparkles, User, Stethoscope } from "lucide-react";
 import clsx from "clsx";
 import type { TestChatMessage, TestChatResult } from "@repo/shared/types";
 import { useToast } from "@/components/ui/toast";
@@ -45,6 +45,7 @@ function AgentTestContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [simulatePatient, setSimulatePatient] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedAgent = agents.find((agent) => agent.id === selectedAgentId);
@@ -69,8 +70,15 @@ function AgentTestContent() {
     setInput("");
   }, [selectedAgent?.id]);
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (!selectedAgent) return;
+    if (simulatePatient) {
+      try {
+        await api.post("/conversations/test/reset", {});
+      } catch {
+        // ignore reset errors
+      }
+    }
     setMessages([buildWelcomeMessage(selectedAgent.name)]);
     setInput("");
   };
