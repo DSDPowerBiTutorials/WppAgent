@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth-config";
 import { getSupabaseClient } from "./supabase";
-
-const DEV_ORG_ID = "00000000-0000-0000-0000-000000000001";
 
 export interface AuthContext {
   userId: string;
@@ -9,15 +8,38 @@ export interface AuthContext {
   userRole: string;
 }
 
+/**
+ * Authenticate an API request. Supports two methods:
+ * 1. NextAuth session (from browser cookies — dashboard users)
+ * 2. Bearer token with Supabase JWT (from external API calls)
+ */
 export async function authenticateRequest(
   request: Request
 ): Promise<AuthContext | NextResponse> {
-  const authHeader = request.headers.get("authorization");
+  // 1. Try NextAuth session first (browser/dashboard requests with cookies)
+  try {
+    const session = await auth();
+    if (session?.user) {
+      const user = session.user as any;
+      if (user.id && user.organizationId) {
+        return {
+          userId: user.id,
+          organizationId: user.organizationId,
+          userRole: user.role || "operator",
+        };
+      }
+    }
+  } catch {
+    // Session check failed — continue to Bearer token check
+  }
 
-  // No token → use fixed org (auth system not yet implemented)
-  // When login/auth is added, remove this bypass
+  // 2. Try Bearer token (external API / Supabase JWT)
+  const authHeader = request.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
-    return { userId: "dev", organizationId: DEV_ORG_ID, userRole: "admin" };
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 }
+    );
   }
 
   const token = authHeader.slice(7);

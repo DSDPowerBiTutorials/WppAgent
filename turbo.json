@@ -12,10 +12,15 @@
     "OPENAI_BASE_URL",
     "NEXTAUTH_SECRET",
     "NEXTAUTH_URL",
+    "AUTH_SECRET",
+    "AUTH_TRUST_HOST",
+    "WHATSAPP_ACCESS_TOKEN",
+    "WHATSAPP_VERIFY_TOKEN",
+    "WHATSAPP_PHONE_NUMBER_ID",
+    "WHATSAPP_APP_SECRET",
     "PORT",
     "CORS_ORIGIN",
-    "LOG_LEVEL",
-    "AUTH_BYPASS"
+    "LOG_LEVEL"
   ],
   "tasks": {
     "build": {

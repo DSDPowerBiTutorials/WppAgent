@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authenticateRequest, isAuthError } from "@/lib/server/auth";
 
 export async function GET(request: NextRequest) {
+  const auth = await authenticateRequest(request);
+  if (isAuthError(auth)) return auth;
+
   const host = request.headers.get("host") || "localhost:3000";
   const proto = request.headers.get("x-forwarded-proto") || "http";
   const baseUrl = `${proto}://${host}`;
@@ -14,8 +18,7 @@ export async function GET(request: NextRequest) {
     { name: "WHATSAPP_ACCESS_TOKEN", description: "Token de acesso Meta", configured: !!process.env.WHATSAPP_ACCESS_TOKEN },
     { name: "WHATSAPP_VERIFY_TOKEN", description: "Token de verificação webhook", configured: !!process.env.WHATSAPP_VERIFY_TOKEN },
     { name: "WHATSAPP_PHONE_NUMBER_ID", description: "ID do número WhatsApp", configured: !!process.env.WHATSAPP_PHONE_NUMBER_ID },
-    { name: "NEXT_PUBLIC_SUPABASE_URL", description: "URL pública Supabase", configured: !!process.env.NEXT_PUBLIC_SUPABASE_URL },
-    { name: "NEXT_PUBLIC_SUPABASE_ANON_KEY", description: "Chave pública Supabase", configured: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY },
+    { name: "NEXTAUTH_SECRET", description: "Secret do NextAuth", configured: !!process.env.NEXTAUTH_SECRET },
   ];
 
   const endpoints = [
@@ -26,27 +29,14 @@ export async function GET(request: NextRequest) {
     { method: "PUT", path: "/api/agents/:id", description: "Atualizar agente" },
     { method: "DELETE", path: "/api/agents/:id", description: "Remover agente" },
     { method: "GET", path: "/api/conversations", description: "Listar conversas" },
-    { method: "POST", path: "/api/conversations", description: "Criar conversa" },
     { method: "GET", path: "/api/conversations/:id", description: "Detalhes da conversa" },
     { method: "GET", path: "/api/conversations/:id/messages", description: "Mensagens da conversa" },
-    { method: "POST", path: "/api/conversations/:id/messages", description: "Enviar mensagem" },
     { method: "POST", path: "/api/conversations/test", description: "Chat de teste com IA" },
     { method: "GET", path: "/api/analytics", description: "Dados analíticos" },
-    { method: "GET", path: "/api/drive", description: "Listar arquivos" },
-    { method: "POST", path: "/api/drive", description: "Upload de arquivo" },
-    { method: "DELETE", path: "/api/drive/:id", description: "Remover arquivo" },
-    { method: "GET/POST", path: "/api/webhooks/whatsapp", description: "Webhook do WhatsApp (Meta)" },
-    { method: "GET", path: "/api/settings/api-info", description: "Informações da API (esta rota)" },
+    { method: "GET", path: "/api/exams", description: "Catálogo de exames" },
+    { method: "GET", path: "/api/appointments", description: "Listar agendamentos" },
+    { method: "POST", path: "/api/appointments", description: "Criar agendamento" },
   ];
-
-  // Only expose non-sensitive / public values
-  const keys = {
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || null,
-    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || null,
-    whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || null,
-    openaiModel: process.env.OPENAI_MODEL || null,
-    openaiBaseUrl: process.env.OPENAI_BASE_URL || null,
-  };
 
   return NextResponse.json({
     baseUrl,
@@ -55,7 +45,10 @@ export async function GET(request: NextRequest) {
       whatsapp: `${baseUrl}/api/webhooks/whatsapp`,
       health: `${baseUrl}/api/health`,
     },
-    keys,
+    config: {
+      openaiModel: process.env.OPENAI_MODEL || null,
+      openaiBaseUrl: process.env.OPENAI_BASE_URL || null,
+    },
     envVars,
   });
 }

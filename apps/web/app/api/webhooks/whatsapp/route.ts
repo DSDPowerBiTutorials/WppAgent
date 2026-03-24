@@ -1,8 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/server/supabase";
 import { ConversationEngine, type PatientContext } from "@/lib/server/conversation-engine";
+import { createHmac, timingSafeEqual } from "crypto";
 
 const WHATSAPP_API_URL = "https://graph.facebook.com/v21.0";
+
+/**
+ * Verify X-Hub-Signature-256 from Meta webhook.
+ * Returns true if the signature is valid or if no app secret is configured (dev mode).
+ */
+function verifyWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+  if (!appSecret) {
+    // In dev without app secret, allow requests but log a warning
+    console.warn("WHATSAPP_APP_SECRET not configured — webhook signature verification skipped");
+    return true;
+  }
+
+  if (!signatureHeader) return false;
+
+  const [algorithm, signature] = signatureHeader.split("=");
+  if (algorithm !== "sha256" || !signature) return false;
+
+  const expectedSignature = createHmac("sha256", appSecret)
+    .update(rawBody, "utf8")
+    .digest("hex");
+
+  try {
+    return timingSafeEqual(
+      Buffer.from(signature, "hex"),
+      Buffer.from(expectedSignature, "hex")
+    );
+  } catch {
+    return false;
+  }
+}
 
 // Meta webhook verification (GET)
 export async function GET(request: NextRequest) {
@@ -20,7 +52,15 @@ export async function GET(request: NextRequest) {
 
 // Receive messages (POST)
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const rawBody = await request.text();
+
+  // Verify Meta webhook signature
+  const signature = request.headers.get("x-hub-signature-256");
+  if (!verifyWebhookSignature(rawBody, signature)) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+  }
+
+  const body = JSON.parse(rawBody);
 
   const entry = body?.entry?.[0];
   const changes = entry?.changes?.[0];

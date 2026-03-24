@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { signOut, useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -100,7 +101,10 @@ export function Sidebar() {
 
       {/* Bottom */}
       <div className="border-t border-gray-100 p-3">
-        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900">
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+        >
           <LogOut size={20} className="text-gray-400" />
           {!collapsed && <span>Sair</span>}
         </button>
@@ -110,6 +114,16 @@ export function Sidebar() {
 }
 
 export function TopBar() {
+  const { data: session } = useSession();
+  const userName = session?.user?.name || "Usuário";
+  const userEmail = session?.user?.email || "";
+  const initials = userName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
       <div>
@@ -121,10 +135,12 @@ export function TopBar() {
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
         </button>
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-emerald-100" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">
+            {initials}
+          </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-medium text-gray-900">Admin</p>
-            <p className="text-xs text-gray-500">admin@clinica.com</p>
+            <p className="text-sm font-medium text-gray-900">{userName}</p>
+            <p className="text-xs text-gray-500">{userEmail}</p>
           </div>
         </div>
       </div>

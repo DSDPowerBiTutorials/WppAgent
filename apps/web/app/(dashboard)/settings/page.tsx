@@ -362,46 +362,29 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* API Keys / Tokens */}
+                {/* Configuration */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-800 mb-3">Chaves e Tokens</h4>
+                  <h4 className="text-sm font-semibold text-gray-800 mb-3">Configuração</h4>
                   <p className="text-xs text-gray-500 mb-3">
-                    Credenciais para aplicações externas se conectarem a esta plataforma.
+                    Configurações não-sensíveis do sistema.
                   </p>
                   <div className="space-y-3">
                     {[
-                      { label: "Supabase URL", value: apiInfo?.keys?.supabaseUrl, field: "supabase-url", secret: false },
-                      { label: "Supabase Anon Key (pública)", value: apiInfo?.keys?.supabaseAnonKey, field: "supabase-anon", secret: false },
-                      { label: "WhatsApp Verify Token", value: apiInfo?.keys?.whatsappVerifyToken, field: "wa-verify", secret: true },
-                      { label: "OpenAI Model", value: apiInfo?.keys?.openaiModel, field: "openai-model", secret: false },
-                      { label: "OpenAI Base URL", value: apiInfo?.keys?.openaiBaseUrl, field: "openai-base", secret: false },
+                      { label: "OpenAI Model", value: apiInfo?.config?.openaiModel, field: "openai-model" },
+                      { label: "OpenAI Base URL", value: apiInfo?.config?.openaiBaseUrl, field: "openai-base" },
                     ].map((item) => (
                       <div key={item.field} className="rounded-lg border border-gray-200 p-3">
                         <div className="flex items-center justify-between">
                           <p className="text-xs font-medium text-gray-700">{item.label}</p>
-                          <div className="flex items-center gap-1">
-                            {item.secret && (
-                              <button
-                                onClick={() => toggleSecret(item.field)}
-                                className="p-1 text-gray-400 hover:text-gray-600"
-                              >
-                                {showSecrets[item.field] ? <EyeOff size={12} /> : <Eye size={12} />}
-                              </button>
-                            )}
-                            <button
-                              onClick={() => item.value && copyToClipboard(item.value, item.field)}
-                              className="p-1 text-gray-400 hover:text-gray-600"
-                            >
-                              {copiedField === item.field ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => item.value && copyToClipboard(item.value, item.field)}
+                            className="p-1 text-gray-400 hover:text-gray-600"
+                          >
+                            {copiedField === item.field ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                          </button>
                         </div>
                         <code className="mt-1 block text-xs font-mono text-gray-500 break-all">
-                          {item.value
-                            ? item.secret && !showSecrets[item.field]
-                              ? "••••••••••••••••••••"
-                              : item.value
-                            : "—"}
+                          {item.value || "—"}
                         </code>
                       </div>
                     ))}
