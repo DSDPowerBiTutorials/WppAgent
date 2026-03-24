@@ -15,6 +15,7 @@ import {
   Eye,
   Search,
   Loader2,
+  Settings2,
 } from "lucide-react";
 import clsx from "clsx";
 import AgentPreview from "@/components/dashboard/agent-preview";
@@ -208,6 +209,13 @@ export default function AgentsPage() {
                         >
                           <Pencil size={14} /> Editar
                         </Link>
+                        <Link
+                          href={`/agents/${agent.id}/features`}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => setMenuOpen(null)}
+                        >
+                          <Settings2 size={14} /> Funcionalidades
+                        </Link>
                         <button
                           onClick={() => setPreviewAgent(agent)}
                           className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -272,6 +280,15 @@ export default function AgentsPage() {
                     </span>
                   ))}
                 </div>
+                {agent.features.length > 0 && (
+                  <Link
+                    href={`/agents/${agent.id}/features`}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                  >
+                    <Settings2 size={12} />
+                    Configurar funcionalidades
+                  </Link>
+                )}
               </div>
 
               {/* Footer */}
