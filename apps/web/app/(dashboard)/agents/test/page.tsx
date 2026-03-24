@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, Bot, Loader2, RotateCcw, Send, Sparkles, User } from "lucide-react";
 import clsx from "clsx";
@@ -23,6 +23,20 @@ function buildWelcomeMessage(agentName: string): ChatMessage {
 let nextMessageId = 0;
 
 export default function AgentTestPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <Loader2 size={32} className="animate-spin text-emerald-600" />
+        </div>
+      }
+    >
+      <AgentTestContent />
+    </Suspense>
+  );
+}
+
+function AgentTestContent() {
   const { agents, loading } = useAgentsContext();
   const { toast } = useToast();
   const searchParams = useSearchParams();

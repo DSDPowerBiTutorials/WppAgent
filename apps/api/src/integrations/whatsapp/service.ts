@@ -23,7 +23,7 @@ export class WhatsAppService {
       .select("organization_id")
       .eq("type", "whatsapp")
       .eq("config->>phone_number_id", msg.phoneNumberId)
-      .eq("active", true)
+      .eq("status", "connected")
       .single();
 
     if (!integration) {
@@ -82,7 +82,6 @@ export class WhatsAppService {
           organization_id: orgId,
           patient_id: patient.id,
           agent_id: agent.id,
-          channel: "whatsapp",
           status: "active",
         })
         .select("id, agent_id, status")
@@ -95,16 +94,10 @@ export class WhatsAppService {
     // Store incoming message
     await supabase.from("messages").insert({
       conversation_id: conversation.id,
-      sender: "patient",
+      role: "patient",
       content: msg.text,
       metadata: { whatsapp_id: msg.messageId, type: msg.type },
     });
-
-    // Update conversation last_message_at
-    await supabase
-      .from("conversations")
-      .update({ last_message_at: new Date().toISOString() })
-      .eq("id", conversation.id);
 
     // If conversation is with human, don't auto-reply
     if (conversation.status === "waiting_human") return;
@@ -120,7 +113,7 @@ export class WhatsAppService {
       // Store AI reply
       await supabase.from("messages").insert({
         conversation_id: conversation.id,
-        sender: "agent",
+        role: "agent",
         content: reply,
       });
 

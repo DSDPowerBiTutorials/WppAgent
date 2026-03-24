@@ -7,7 +7,7 @@ Plataforma de agentes IA para atendimento de pacientes via WhatsApp. Agende, con
 - **Frontend:** Next.js 16 (App Router), Tailwind CSS v4, framer-motion
 - **Backend:** Fastify + TypeScript
 - **Database:** Supabase (PostgreSQL) com RLS
-- **AI:** Anthropic Claude (claude-sonnet-4-20250514)
+- **AI:** OpenAI GPT-4.1
 - **WhatsApp:** Meta Cloud API (WhatsApp Business Platform)
 - **Monorepo:** Turborepo com npm workspaces
 
@@ -51,7 +51,7 @@ O projeto usa Supabase Postgres com o backend acessando o banco via `SUPABASE_SE
 ```bash
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
-ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
 ```
 
 3. No SQL Editor do Supabase, execute nesta ordem:
@@ -65,7 +65,9 @@ ANTHROPIC_API_KEY=
 ### O que cada parte habilita
 
 - `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`: obrigatórios para a API subir.
-- `ANTHROPIC_API_KEY`: obrigatória para respostas reais do agente, incluindo o chat de teste.
+- `OPENAI_API_KEY`: obrigatória para respostas reais do agente, incluindo o chat de teste.
+- `OPENAI_MODEL`: opcional. O padrão do projeto é `gpt-4.1`.
+- `OPENAI_BASE_URL`: opcional. Use apenas se quiser apontar o SDK para um gateway compatível com a API da OpenAI.
 - `WHATSAPP_*`: obrigatórias apenas para testar webhook e envio real via WhatsApp.
 - `SUPABASE_ANON_KEY`: mantida no exemplo de ambiente, mas não é usada pelo backend atual.
 
@@ -84,7 +86,26 @@ curl http://localhost:3001/api/health
 curl http://localhost:3001/api/agents
 ```
 
-Se o chat de teste devolver erro relacionado à IA, o ponto pendente costuma ser `ANTHROPIC_API_KEY` ausente ou inválida.
+Se o chat de teste devolver erro relacionado à IA, o ponto pendente costuma ser `OPENAI_API_KEY` ausente ou inválida.
+
+### Integração com GPT-4.1
+
+O backend usa o SDK oficial da OpenAI e envia requests pelo Responses API.
+
+- Modelo padrão: `gpt-4.1`
+- Chave obrigatória: `OPENAI_API_KEY`
+- Timeout configurado no backend: 20 segundos
+- Override de modelo: `OPENAI_MODEL`
+- Override de endpoint: `OPENAI_BASE_URL`
+
+O fluxo atual do engine:
+
+1. Busca o `system_prompt` do agente no Supabase.
+2. Converte o histórico local da conversa para o formato esperado pela OpenAI.
+3. Envia `instructions` com o prompt do agente e `input` com o histórico + mensagem atual.
+4. Lê a resposta textual a partir de `output_text`.
+
+Isso vale tanto para o fluxo persistente de conversa quanto para o chat de teste efêmero do dashboard.
 
 ### Observações importantes sobre RLS
 
@@ -99,5 +120,5 @@ Este repositório também não inclui scripts automatizados de `migrate` ou `see
 - **API REST** com CRUD completo para agents, conversations, appointments, patients
 - **Chat de teste** no dashboard para validar um agente com IA real sem persistir mensagens no banco
 - **Webhook WhatsApp** para receber e responder mensagens automaticamente
-- **AI Engine** com Anthropic Claude para gerar respostas contextuais
+- **AI Engine** com OpenAI GPT-4.1 para gerar respostas contextuais
 - **Multi-tenant** com RLS por organização no Supabase

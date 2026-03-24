@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import type { TestChatMessage } from "@repo/shared/types";
 import { getSupabaseClient } from "../lib/supabase.js";
 
@@ -20,16 +20,20 @@ Regras:
 - Para emergências, oriente o paciente a ligar 192 (SAMU)`;
 
 export class ConversationEngine {
-  private static anthropic: Anthropic | null = null;
-  private static MODEL = "claude-sonnet-4-20250514";
+  private static openai: OpenAI | null = null;
+  private static MODEL = process.env.OPENAI_MODEL || "gpt-4.1";
 
-  private static getClient(): Anthropic {
-    if (!this.anthropic) {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
-      this.anthropic = new Anthropic({ apiKey });
+  private static getClient(): OpenAI {
+    if (!this.openai) {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error("Missing OPENAI_API_KEY");
+      this.openai = new OpenAI({
+        apiKey,
+        baseURL: process.env.OPENAI_BASE_URL || undefined,
+        timeout: 20 * 1000,
+      });
     }
-    return this.anthropic;
+    return this.openai;
   }
 
   private static async getSystemPrompt(agentId: string): Promise<string> {
@@ -44,32 +48,32 @@ export class ConversationEngine {
     return agent?.system_prompt || DEFAULT_SYSTEM_PROMPT;
   }
 
-  private static toAnthropicMessages(history: TestChatMessage[]): Anthropic.MessageParam[] {
+  private static toOpenAIMessages(history: TestChatMessage[]): OpenAI.Responses.ResponseInputItem[] {
     return history
       .filter((message) => message.content.trim().length > 0)
       .map((message) => ({
+        type: "message",
         role: message.role,
-        content: message.content,
+        content: [{ type: "input_text", text: message.content }],
       }));
   }
 
   private static async generateReply(
     systemPrompt: string,
-    messages: Anthropic.MessageParam[]
+    messages: OpenAI.Responses.ResponseInputItem[]
   ): Promise<string | null> {
     try {
       const client = this.getClient();
-      const response = await client.messages.create({
+      const response = await client.responses.create({
         model: this.MODEL,
-        max_tokens: 500,
-        system: systemPrompt,
-        messages,
+        instructions: systemPrompt,
+        input: messages,
+        max_output_tokens: 500,
       });
 
-      const textBlock = response.content.find((block) => block.type === "text");
-      return textBlock?.text || null;
+      return response.output_text || null;
     } catch (err) {
-      console.error("Anthropic API error:", err);
+      console.error("OpenAI API error:", err);
       return "Desculpe, estou com uma dificuldade técnica no momento. Um atendente humano irá te ajudar em breve.";
     }
   }
@@ -80,7 +84,7 @@ export class ConversationEngine {
     userMessage: string
   ): Promise<string | null> {
     const systemPrompt = await this.getSystemPrompt(agentId);
-    const messages = this.toAnthropicMessages([
+    const messages = this.toOpenAIMessages([
       ...history,
       { role: "user", content: userMessage },
     ]);
@@ -98,13 +102,13 @@ export class ConversationEngine {
     // Get conversation history (last 20 messages for context)
     const { data: history } = await supabase
       .from("messages")
-      .select("sender, content")
+      .select("role, content")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true })
       .limit(20);
 
     const messages: TestChatMessage[] = (history || []).map((msg) => ({
-      role: msg.sender === "patient" ? "user" : "assistant",
+      role: msg.role === "patient" ? "user" : "assistant",
       content: msg.content,
     }));
 

@@ -20,11 +20,12 @@ export async function appointmentRoutes(app: FastifyInstance) {
       .from("appointments")
       .select("*, patient:patients(name, phone)", { count: "exact" })
       .eq("organization_id", orgId)
-      .order("scheduled_at", { ascending: true })
+      .order("date", { ascending: true })
+      .order("time", { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (date) {
-      q = q.gte("scheduled_at", `${date}T00:00:00`).lt("scheduled_at", `${date}T23:59:59`);
+      q = q.eq("date", date);
     }
     if (status) q = q.eq("status", status);
 

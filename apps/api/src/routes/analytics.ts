@@ -22,8 +22,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
         .from("appointments")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", orgId)
-        .gte("scheduled_at", `${today}T00:00:00`)
-        .lt("scheduled_at", `${today}T23:59:59`),
+        .eq("date", today),
       supabase
         .from("patients")
         .select("id", { count: "exact", head: true })

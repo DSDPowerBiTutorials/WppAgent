@@ -60,7 +60,7 @@ export async function conversationRoutes(app: FastifyInstance) {
       .from("conversations")
       .select("*, patient:patients(name, phone)", { count: "exact" })
       .eq("organization_id", orgId)
-      .order("last_message_at", { ascending: false })
+      .order("updated_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (status) q = q.eq("status", status);
