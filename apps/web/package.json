@@ -11,8 +11,11 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@repo/shared": "*",
     "@repo/ui": "*",
     "@supabase/supabase-js": "^2.100.0",
+    "openai": "^6.32.0",
+    "zod": "^3.25.76",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.0.1",
