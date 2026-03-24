@@ -14,7 +14,8 @@
     "NEXTAUTH_URL",
     "PORT",
     "CORS_ORIGIN",
-    "LOG_LEVEL"
+    "LOG_LEVEL",
+    "AUTH_BYPASS"
   ],
   "tasks": {
     "build": {

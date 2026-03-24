@@ -14,10 +14,11 @@ export async function authenticateRequest(
 ): Promise<AuthContext | NextResponse> {
   const authHeader = request.headers.get("authorization");
 
-  // Dev bypass: no token + not production → use fixed org
+  // Bypass: no token + (dev mode OR AUTH_BYPASS enabled) → use fixed org
+  // AUTH_BYPASS allows pre-auth access in production until login is implemented
   if (
     !authHeader?.startsWith("Bearer ") &&
-    process.env.NODE_ENV !== "production"
+    (process.env.NODE_ENV !== "production" || process.env.AUTH_BYPASS === "true")
   ) {
     return { userId: "dev", organizationId: DEV_ORG_ID, userRole: "admin" };
   }
