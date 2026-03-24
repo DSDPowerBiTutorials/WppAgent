@@ -59,7 +59,12 @@ export class ConversationEngine {
       .map((m) => ({
         type: "message" as const,
         role: m.role,
-        content: [{ type: "input_text" as const, text: m.content }],
+        content: [
+          {
+            type: m.role === "assistant" ? ("output_text" as const) : ("input_text" as const),
+            text: m.content,
+          },
+        ],
       }));
   }
 
