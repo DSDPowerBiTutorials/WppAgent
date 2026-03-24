@@ -1,0 +1,9 @@
+export { Header } from "./header";
+export { Footer } from "./footer";
+export { HeroSection } from "./hero-section";
+export { ResultsSection } from "./results-section";
+export { FeaturesSection } from "./features-section";
+export { DemoSection } from "./demo-section";
+export { AnalyticsSection } from "./analytics-section";
+export { IntegrationsSection } from "./integrations-section";
+export { CtaSection } from "./cta-section";
