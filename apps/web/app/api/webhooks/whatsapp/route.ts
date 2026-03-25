@@ -3,6 +3,9 @@ import { getSupabaseClient } from "@/lib/server/supabase";
 import { ConversationEngine, type PatientContext } from "@/lib/server/conversation-engine";
 import { createHmac, timingSafeEqual } from "crypto";
 
+// Allow up to 60s for multi-tool scheduling flows (OpenAI + CC API calls)
+export const maxDuration = 60;
+
 const WHATSAPP_API_URL = "https://graph.facebook.com/v21.0";
 
 /**

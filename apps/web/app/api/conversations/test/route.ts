@@ -4,6 +4,9 @@ import { getSupabaseClient } from "@/lib/server/supabase";
 import { testChatSchema } from "@repo/shared/schemas";
 import { ConversationEngine } from "@/lib/server/conversation-engine";
 
+// Allow up to 60s for multi-tool scheduling flows (OpenAI + CC API calls)
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   const auth = await authenticateRequest(request);
   if (isAuthError(auth)) return auth;

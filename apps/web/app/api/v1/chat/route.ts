@@ -3,6 +3,9 @@ import { authenticateRequest, isAuthError } from "@/lib/server/auth";
 import { getSupabaseClient } from "@/lib/server/supabase";
 import { ConversationEngine, type PatientContext } from "@/lib/server/conversation-engine";
 
+// Allow up to 60s for multi-tool scheduling flows (OpenAI + CC API calls)
+export const maxDuration = 60;
+
 /**
  * POST /api/v1/chat
  *

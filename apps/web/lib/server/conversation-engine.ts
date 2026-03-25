@@ -265,7 +265,7 @@ export class ConversationEngine {
       this.openai = new OpenAI({
         apiKey,
         baseURL: process.env.OPENAI_BASE_URL || undefined,
-        timeout: 20_000,
+        timeout: 55_000,
       });
     }
     return this.openai;
@@ -378,8 +378,11 @@ export class ConversationEngine {
 
       // If we exhausted iterations, return last known text or fallback
       return "Desculpe, estou com dificuldade para processar sua solicitação. Um atendente irá te ajudar.";
-    } catch (err) {
-      console.error("OpenAI API error:", err);
+    } catch (err: any) {
+      const errMsg = err?.message || String(err);
+      const errCode = err?.code || err?.status || "unknown";
+      console.error(`[ConversationEngine] Error (code=${errCode}): ${errMsg}`);
+      if (err?.stack) console.error(err.stack);
       return "Desculpe, estou com uma dificuldade técnica no momento. Um atendente humano irá te ajudar em breve.";
     }
   }
