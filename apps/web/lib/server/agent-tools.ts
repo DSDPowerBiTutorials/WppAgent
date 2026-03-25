@@ -1,4 +1,6 @@
 import { getSupabaseClient } from "./supabase";
+import { isClinicaConectaEnabled } from "./clinica-conecta";
+import { CLINICA_CONECTA_TOOLS, executeClinicaConectaTool } from "./clinica-conecta/tools";
 
 // ─── Context passed to every tool execution ──────────────────
 export interface ToolContext {
@@ -192,12 +194,25 @@ export const AGENT_TOOLS = [
   },
 ] as const;
 
+// ─── Active tools (local + Clínica Conecta when configured) ──
+export function getActiveTools() {
+  if (isClinicaConectaEnabled()) {
+    return [...AGENT_TOOLS, ...CLINICA_CONECTA_TOOLS];
+  }
+  return [...AGENT_TOOLS];
+}
+
 // ─── Tool executor ──────────────────────────────────────────
 export async function executeTool(
   name: string,
   args: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<string> {
+  // Delegate cc_* tools to Clínica Conecta executor
+  if (name.startsWith("cc_")) {
+    return executeClinicaConectaTool(name, args);
+  }
+
   const supabase = getSupabaseClient();
 
   switch (name) {

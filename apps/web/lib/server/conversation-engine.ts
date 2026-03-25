@@ -1,6 +1,7 @@
 ﻿import OpenAI from "openai";
 import { getSupabaseClient } from "./supabase";
-import { AGENT_TOOLS, executeTool, type ToolContext } from "./agent-tools";
+import { AGENT_TOOLS, executeTool, getActiveTools, type ToolContext } from "./agent-tools";
+import { isClinicaConectaEnabled } from "./clinica-conecta";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -220,6 +221,26 @@ function buildOperatingHoursInstructions(hours: Record<string, any> | null): str
   return text;
 }
 
+function buildClinicaConectaInstructions(): string {
+  if (!isClinicaConectaEnabled()) return "";
+
+  return `\n\n---\n# INTEGRAÇÃO CLÍNICA CONECTA
+Você está integrado ao sistema Clínica Conecta. Use SEMPRE as ferramentas cc_* para consultar dados reais:
+- Use cc_list_specialties para listar especialidades disponíveis.
+- Use cc_list_professionals para listar médicos (pode filtrar por especialidade).
+- Use cc_check_availability para consultar horários livres de um profissional numa data.
+- Use cc_check_available_dates para saber em quais dias um profissional tem vaga.
+- Use cc_create_appointment para agendar (precisa de patient_id, professional_id, date_key e time).
+- Use cc_get_financials para consultas financeiras e faturas.
+- Use cc_get_patient_health_plan para informações de planos de saúde (Videx).
+- Use cc_query_knowledge para dúvidas sobre procedimentos, preparos e orientações.
+
+REGRAS IMPORTANTES:
+- NUNCA invente horários, nomes de médicos ou especialidades — sempre consulte via ferramentas.
+- Confirme dados com o paciente antes de executar ações (agendar, cancelar, remarcar).
+- Para dúvidas gerais da clínica, use cc_query_knowledge primeiro.`;
+}
+
 export class ConversationEngine {
   private static openai: OpenAI | null = null;
   private static MODEL = process.env.OPENAI_MODEL || "gpt-4.1";
@@ -260,7 +281,7 @@ export class ConversationEngine {
       patientInstructions = `\n\n# CONTEXTO DO PACIENTE\nVocê está conversando com **${patient.patientName}**.\n- Chame o paciente pelo nome.\n- ID do paciente: ${patient.patientId}\n- Use as ferramentas disponíveis para consultar informações e executar ações no sistema (agendar, cancelar, remarcar consultas, etc.).\n- Sempre confirme os dados com o paciente antes de executar uma ação.`;
     }
 
-    return `${basePrompt}${patientInstructions}${featureInstructions}${voiceInstructions}${hoursInstructions}`;
+    return `${basePrompt}${patientInstructions}${featureInstructions}${voiceInstructions}${hoursInstructions}${buildClinicaConectaInstructions()}`;
   }
 
   private static toOpenAIMessages(
@@ -289,6 +310,7 @@ export class ConversationEngine {
       const client = this.getClient();
       const useTools = !!toolCtx;
 
+      const activeTools = getActiveTools();
       let input = [...messages];
 
       for (let i = 0; i < (useTools ? MAX_TOOL_ITERATIONS : 1); i++) {
@@ -297,7 +319,7 @@ export class ConversationEngine {
           instructions: systemPrompt,
           input,
           max_output_tokens: 500,
-          ...(useTools ? { tools: AGENT_TOOLS as any } : {}),
+          ...(useTools ? { tools: activeTools as any } : {}),
         });
 
         // Check if model wants to call tools

@@ -20,7 +20,9 @@
     "WHATSAPP_APP_SECRET",
     "PORT",
     "CORS_ORIGIN",
-    "LOG_LEVEL"
+    "LOG_LEVEL",
+    "CLINICA_CONECTA_API_URL",
+    "CLINICA_CONECTA_API_KEY"
   ],
   "tasks": {
     "build": {
