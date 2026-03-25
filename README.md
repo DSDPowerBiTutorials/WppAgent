@@ -4,121 +4,167 @@ Plataforma de agentes IA para atendimento de pacientes via WhatsApp. Agende, con
 
 ## Stack
 
-- **Frontend:** Next.js 16 (App Router), Tailwind CSS v4, framer-motion
-- **Backend:** Fastify + TypeScript
+- **Frontend + API:** Next.js 16 (App Router), Route Handlers, Tailwind CSS v4
 - **Database:** Supabase (PostgreSQL) com RLS
-- **AI:** OpenAI GPT-4.1
+- **AI:** OpenAI GPT-4.1 com Function Calling (10 tools)
+- **Auth:** NextAuth v5 + Supabase Auth + API Keys
 - **WhatsApp:** Meta Cloud API (WhatsApp Business Platform)
 - **Monorepo:** Turborepo com npm workspaces
+- **Deploy:** Vercel (auto-deploy on push to main)
 
 ## Estrutura
 
 ```
 apps/
-  web/          # Next.js — Landing page + Dashboard
-  api/          # Fastify — REST API + Webhooks
+  web/          # Next.js — Landing page + Dashboard + API Routes
 packages/
   shared/       # Tipos, schemas Zod, constantes
-  supabase/     # Migrações SQL
+  supabase/     # Migrações SQL (001-006)
+  ui/           # Componentes compartilhados
 ```
 
 ## Desenvolvimento
 
 ```bash
-# Instalar dependências
 npm install
-
-# Copiar variáveis de ambiente
-cp .env.example .env
-
-# Rodar tudo (frontend + backend)
-npm run dev
-
-# Ou individualmente
-cd apps/web && npm run dev   # http://localhost:3000
-cd apps/api && npm run dev   # http://localhost:3001
+cp .env.example .env   # preencher as variáveis
+npm run dev             # http://localhost:3000
 ```
+
+## Variáveis de Ambiente
+
+### Obrigatórias
+
+| Variável | Descrição |
+|---|---|
+| `SUPABASE_URL` | URL do projeto Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave service_role do Supabase |
+| `OPENAI_API_KEY` | Chave da API OpenAI |
+| `AUTH_SECRET` | Secret para NextAuth v5 (gere com `openssl rand -base64 32`) |
+| `AUTH_TRUST_HOST` | `true` (necessário para deploy em Vercel) |
+
+### WhatsApp (para produção)
+
+| Variável | Descrição |
+|---|---|
+| `WHATSAPP_ACCESS_TOKEN` | Token de acesso do Meta Business |
+| `WHATSAPP_VERIFY_TOKEN` | Token de verificação do webhook |
+| `WHATSAPP_PHONE_NUMBER_ID` | ID do número do WhatsApp Business |
+| `WHATSAPP_APP_SECRET` | App Secret (para verificação HMAC-SHA256 do webhook) |
+
+### Opcionais
+
+| Variável | Descrição | Padrão |
+|---|---|---|
+| `OPENAI_MODEL` | Modelo OpenAI | `gpt-4.1` |
+| `OPENAI_BASE_URL` | URL base do SDK OpenAI | `https://api.openai.com/v1` |
+| `NEXTAUTH_URL` | URL da aplicação | `http://localhost:3000` |
 
 ## Banco de Dados
 
-O projeto usa Supabase Postgres com o backend acessando o banco via `SUPABASE_SERVICE_ROLE_KEY`.
+Execute as migrações no SQL Editor do Supabase, nesta ordem:
 
-### Setup completo do Supabase
+1. `packages/supabase/migrations/001_initial.sql` — tabelas base
+2. `packages/supabase/migrations/002_add_feature_config.sql` — feature flags
+3. `packages/supabase/migrations/003_drive_files.sql` — arquivos do Drive
+4. `packages/supabase/migrations/004_exams_catalog.sql` — catálogo de exames (fuzzy search)
+5. `packages/supabase/migrations/005_add_auth_id.sql` — auth_id na tabela users
+6. `packages/supabase/migrations/006_api_keys.sql` — API keys para integração
+7. `packages/supabase/seed.sql` — dados iniciais
 
-1. Crie um projeto no Supabase.
-2. Copie `.env.example` para `.env` e preencha pelo menos:
+## Autenticação
+
+O sistema suporta 3 métodos de autenticação:
+
+1. **NextAuth Session** — para o dashboard (login com email/senha)
+2. **API Key** (`Bearer wpp_...`) — para integrações externas
+3. **Supabase JWT** (`Bearer <jwt>`) — para clientes Supabase
+
+### Login no Dashboard
+
+- Acesse `/login` com as credenciais criadas no Supabase Auth
+- Rotas protegidas por middleware (redirect para /login se não autenticado)
+
+### API Keys para Integração
+
+- Crie e gerencie no dashboard em **Settings → Segurança**
+- As chaves são hasheadas com SHA-256 (a chave raw é exibida apenas na criação)
+- Use no header: `Authorization: Bearer wpp_<key>`
+
+## API Endpoints
+
+### Públicos
+- `GET /api/health` — health check
+
+### Protegidos (requer auth)
+- `GET/POST /api/agents` — CRUD de agentes
+- `GET/POST /api/appointments` — CRUD de agendamentos
+- `GET/POST /api/conversations` — conversas e mensagens
+- `GET /api/exams` — catálogo de exames com busca
+- `GET/POST /api/drive` — gerenciamento de arquivos
+- `GET /api/analytics` — dados de analytics
+
+### Admin (requer role admin)
+- `GET/POST/DELETE /api/settings/api-keys` — gerenciar API keys
+- `GET /api/settings/api-info` — informações da API
+
+### Integração Externa
+- `POST /api/v1/chat` — endpoint principal para sistemas externos
 
 ```bash
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-OPENAI_API_KEY=
+curl -X POST https://seu-dominio.vercel.app/api/v1/chat \
+  -H "Authorization: Bearer wpp_sua_chave" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Quero agendar uma consulta", "patientPhone": "+5511999999999"}'
 ```
 
-3. No SQL Editor do Supabase, execute nesta ordem:
+### Webhook WhatsApp
+- `GET /api/webhooks/whatsapp` — verificação do webhook (Meta)
+- `POST /api/webhooks/whatsapp` — recebe mensagens (HMAC-SHA256 verificado)
 
-- `packages/supabase/migrations/001_initial.sql`
-- `packages/supabase/migrations/002_add_feature_config.sql`
-- `packages/supabase/seed.sql`
+## AI Engine
 
-4. Suba a API e o frontend com `npm run dev`.
+O motor de IA usa OpenAI GPT-4.1 Responses API com Function Calling:
 
-### O que cada parte habilita
+**Tools disponíveis:**
+- `search_appointments` / `create_appointment` / `update_appointment` / `cancel_appointment`
+- `search_patients` / `get_patient_info`
+- `check_availability` / `get_business_hours`
+- `search_exams` / `get_exam_details`
 
-- `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`: obrigatórios para a API subir.
-- `OPENAI_API_KEY`: obrigatória para respostas reais do agente, incluindo o chat de teste.
-- `OPENAI_MODEL`: opcional. O padrão do projeto é `gpt-4.1`.
-- `OPENAI_BASE_URL`: opcional. Use apenas se quiser apontar o SDK para um gateway compatível com a API da OpenAI.
-- `WHATSAPP_*`: obrigatórias apenas para testar webhook e envio real via WhatsApp.
-- `SUPABASE_ANON_KEY`: mantida no exemplo de ambiente, mas não é usada pelo backend atual.
+## Deploy na Vercel
 
-### Seed e autenticação em desenvolvimento
+O projeto faz deploy automático via push para `main`.
 
-O arquivo `packages/supabase/seed.sql` cria a organização fixa `00000000-0000-0000-0000-000000000001`.
+**Configuração da Vercel:**
+- **Root Directory:** `apps/web`
+- **Framework:** Next.js (auto-detect)
 
-Em desenvolvimento, se nenhuma credencial Bearer for enviada, a API aplica bypass de autenticação e usa essa organização fixa. Esse comportamento está em `apps/api/src/middleware/auth.ts` e permite testar as rotas locais sem login completo.
+**Variáveis obrigatórias no painel Vercel (Settings → Environment Variables):**
 
-### Validação mínima do ambiente
-
-Depois de rodar as migrações e o seed, valide:
-
-```bash
-curl http://localhost:3001/api/health
-curl http://localhost:3001/api/agents
 ```
-
-Se o chat de teste devolver erro relacionado à IA, o ponto pendente costuma ser `OPENAI_API_KEY` ausente ou inválida.
-
-### Integração com GPT-4.1
-
-O backend usa o SDK oficial da OpenAI e envia requests pelo Responses API.
-
-- Modelo padrão: `gpt-4.1`
-- Chave obrigatória: `OPENAI_API_KEY`
-- Timeout configurado no backend: 20 segundos
-- Override de modelo: `OPENAI_MODEL`
-- Override de endpoint: `OPENAI_BASE_URL`
-
-O fluxo atual do engine:
-
-1. Busca o `system_prompt` do agente no Supabase.
-2. Converte o histórico local da conversa para o formato esperado pela OpenAI.
-3. Envia `instructions` com o prompt do agente e `input` com o histórico + mensagem atual.
-4. Lê a resposta textual a partir de `output_text`.
-
-Isso vale tanto para o fluxo persistente de conversa quanto para o chat de teste efêmero do dashboard.
-
-### Observações importantes sobre RLS
-
-As migrações do repositório habilitam Row Level Security nas tabelas, mas o backend atual usa `SUPABASE_SERVICE_ROLE_KEY`, que ignora RLS, e o isolamento por organização acontece hoje principalmente na camada da aplicação via `organization_id` + middleware.
-
-Este repositório também não inclui scripts automatizados de `migrate` ou `seed`; o setup atual é manual pelo SQL Editor do Supabase.
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_ANON_KEY
+OPENAI_API_KEY
+AUTH_SECRET
+AUTH_TRUST_HOST=true
+WHATSAPP_ACCESS_TOKEN
+WHATSAPP_VERIFY_TOKEN
+WHATSAPP_PHONE_NUMBER_ID
+WHATSAPP_APP_SECRET
+```
 
 ## Funcionalidades
 
 - **Landing page** com hero, features, demo, analytics, integrações
-- **Dashboard** com conversas, agentes, agendamentos, pacientes, analytics, integrações, configurações
-- **API REST** com CRUD completo para agents, conversations, appointments, patients
-- **Chat de teste** no dashboard para validar um agente com IA real sem persistir mensagens no banco
-- **Webhook WhatsApp** para receber e responder mensagens automaticamente
-- **AI Engine** com OpenAI GPT-4.1 para gerar respostas contextuais
-- **Multi-tenant** com RLS por organização no Supabase
+- **Dashboard** com conversas, agentes, agendamentos, drive, analytics, configurações
+- **Sistema de login** com NextAuth v5 + Supabase Auth
+- **API REST** com CRUD completo e 3 métodos de autenticação
+- **API Keys** para integração segura com sistemas externos
+- **Endpoint /api/v1/chat** para integração direta via API
+- **Chat de teste** no dashboard para validar agentes com IA real
+- **Webhook WhatsApp** com verificação HMAC-SHA256
+- **AI Engine** com GPT-4.1 + Function Calling (10 tools)
+- **Catálogo de exames** com busca fuzzy (pg_trgm)
+- **Multi-tenant** com RLS por organização
