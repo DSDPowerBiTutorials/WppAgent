@@ -1,4 +1,4 @@
-import { auth } from "./lib/auth-config.js";
+import { auth } from "./lib/auth-config";
 
 export default auth((req) => {
   const { nextUrl, auth: session } = req;
