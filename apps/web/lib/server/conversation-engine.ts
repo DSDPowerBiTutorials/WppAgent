@@ -330,9 +330,11 @@ export class ConversationEngine {
       const useTools = !!toolCtx;
 
       const activeTools = getActiveTools();
+      console.log(`[ConversationEngine] Starting reply. useTools=${useTools}, toolCount=${activeTools.length}, model=${this.MODEL}`);
       let input = [...messages];
 
       for (let i = 0; i < (useTools ? MAX_TOOL_ITERATIONS : 1); i++) {
+        console.log(`[ConversationEngine] Iteration ${i + 1}/${useTools ? MAX_TOOL_ITERATIONS : 1}, input items: ${input.length}`);
         const response = await client.responses.create({
           model: this.MODEL,
           instructions: systemPrompt,
@@ -340,6 +342,7 @@ export class ConversationEngine {
           max_output_tokens: 1024,
           ...(useTools ? { tools: activeTools as any } : {}),
         });
+        console.log(`[ConversationEngine] OpenAI responded. output items: ${response.output.length}`);
 
         // Check if model wants to call tools
         const toolCalls = response.output.filter(
@@ -348,16 +351,18 @@ export class ConversationEngine {
 
         if (toolCalls.length === 0) {
           // No tool calls → return text
+          console.log(`[ConversationEngine] No tool calls, returning text (${(response.output_text || '').length} chars)`);
           return response.output_text || null;
         }
 
         // Execute all tool calls and feed results back
+        console.log(`[ConversationEngine] ${toolCalls.length} tool call(s): ${toolCalls.map((c: any) => c.name).join(', ')}`);
         const toolOutputs: OpenAI.Responses.ResponseInputItem[] = [];
         for (const call of toolCalls) {
           const fc = call as any;
           const args = JSON.parse(fc.arguments || "{}");
 
-          console.log(`[Tool] ${fc.name}(${JSON.stringify(args)})`);
+          console.log(`[Tool] ${fc.name}(${JSON.stringify(args).slice(0, 200)})`);
           const result = await executeTool(fc.name, args, toolCtx!);
           console.log(`[Tool] ${fc.name} → ${result.slice(0, 200)}`);
 
@@ -377,6 +382,7 @@ export class ConversationEngine {
       }
 
       // If we exhausted iterations, return last known text or fallback
+      console.log(`[ConversationEngine] Exhausted ${MAX_TOOL_ITERATIONS} iterations`);
       return "Desculpe, estou com dificuldade para processar sua solicitação. Um atendente irá te ajudar.";
     } catch (err: any) {
       const errMsg = err?.message || String(err);
