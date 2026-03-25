@@ -131,7 +131,7 @@ export class ClinicaConectaClient {
 
   // ── Patients ────────────────────────────────────────────
   async searchPatients(q: string, limit?: number): Promise<CCPatient[]> {
-    return this.request<CCPatient[]>("GET", "/patients/search", {
+    return this.request<CCPatient[]>("GET", "/patients", {
       params: { q, limit: limit?.toString() },
     });
   }
@@ -184,15 +184,16 @@ export class ClinicaConectaClient {
 
   // ── Availability ────────────────────────────────────────
   async getAvailableSlots(professionalId: string, date: string): Promise<CCAvailabilitySlots> {
-    return this.request<CCAvailabilitySlots>("GET", "/availability/slots", {
-      params: { professional_id: professionalId, date },
+    return this.request<CCAvailabilitySlots>("GET", "/availability", {
+      params: { professionalId, date },
     });
   }
 
   async getAvailableDates(professionalId: string, daysAhead?: number): Promise<CCAvailableDates> {
-    return this.request<CCAvailableDates>("GET", "/availability/dates", {
+    return this.request<CCAvailableDates>("GET", "/availability", {
       params: {
-        professional_id: professionalId,
+        professionalId,
+        type: "dates",
         days_ahead: daysAhead?.toString(),
       },
     });
@@ -207,8 +208,8 @@ export class ClinicaConectaClient {
 
   // ── Health Plans (Videx) ────────────────────────────────
   async getVidexMemberships(patientId: string): Promise<CCVidexResponse> {
-    return this.request<CCVidexResponse>("GET", "/videx/memberships", {
-      params: { patient_id: patientId },
+    return this.request<CCVidexResponse>("GET", "/videx", {
+      params: { patientId },
     });
   }
 
@@ -223,7 +224,7 @@ export class ClinicaConectaClient {
   async getProfessionals(filters?: CCProfessionalFilters): Promise<CCProfessional[]> {
     return this.request<CCProfessional[]>("GET", "/professionals", {
       params: {
-        specialty_id: filters?.specialty_id,
+        specialtyId: filters?.specialty_id,
         active: filters?.active?.toString(),
       },
     });
@@ -236,7 +237,7 @@ export class ClinicaConectaClient {
 
   // ── Knowledge Base (RAG) ────────────────────────────────
   async queryKnowledge(query: string, topK?: number): Promise<CCKnowledgeResponse> {
-    return this.request<CCKnowledgeResponse>("POST", "/knowledge/query", {
+    return this.request<CCKnowledgeResponse>("POST", "/knowledge", {
       body: { query, top_k: topK },
     });
   }
