@@ -25,7 +25,7 @@ export interface PatientContext {
   conversationId: string;
 }
 
-const MAX_TOOL_ITERATIONS = 5;
+const MAX_TOOL_ITERATIONS = 10;
 
 const FEATURE_LABELS: Record<string, string> = {
   faq: "Dúvidas Frequentes (FAQ)",
@@ -241,7 +241,17 @@ Você está integrado ao sistema Clínica Conecta. Use SEMPRE as ferramentas cc_
 REGRAS IMPORTANTES:
 - NUNCA invente horários, nomes de médicos ou especialidades — sempre consulte via ferramentas.
 - Confirme dados com o paciente antes de executar ações (agendar, cancelar, remarcar).
-- Para dúvidas gerais da clínica, use cc_query_knowledge primeiro.`;
+- Para dúvidas gerais da clínica, use cc_query_knowledge primeiro.
+
+OTIMIZAÇÃO DE CHAMADAS — MUITO IMPORTANTE:
+- Chame MÚLTIPLAS ferramentas simultaneamente quando possível (ex: cc_list_specialties e cc_list_professionals juntas).
+- Quando já souber o ID de uma especialidade ou profissional do contexto da conversa, NÃO busque novamente.
+- Para agendamento, siga este fluxo otimizado:
+  1. Se o paciente pedir uma especialidade, use cc_list_professionals com specialty_id diretamente (se já tiver o ID) OU cc_list_specialties + cc_list_professionals juntos.
+  2. Com o professional_id, use cc_check_available_dates para obter as datas.
+  3. Com a data escolhida, use cc_check_availability para os horários.
+  4. Confirme com o paciente e use cc_create_appointment.
+- NUNCA responda "vou verificar" sem chamar a ferramenta na mesma resposta. Sempre inclua a chamada de ferramenta junto com a mensagem.`;
 }
 
 export class ConversationEngine {
@@ -327,7 +337,7 @@ export class ConversationEngine {
           model: this.MODEL,
           instructions: systemPrompt,
           input,
-          max_output_tokens: 500,
+          max_output_tokens: 1024,
           ...(useTools ? { tools: activeTools as any } : {}),
         });
 
@@ -341,7 +351,8 @@ export class ConversationEngine {
           return response.output_text || null;
         }
 
-        // Execute tool calls and feed results back
+        // Execute all tool calls and feed results back
+        const toolOutputs: OpenAI.Responses.ResponseInputItem[] = [];
         for (const call of toolCalls) {
           const fc = call as any;
           const args = JSON.parse(fc.arguments || "{}");
@@ -350,17 +361,19 @@ export class ConversationEngine {
           const result = await executeTool(fc.name, args, toolCtx!);
           console.log(`[Tool] ${fc.name} → ${result.slice(0, 200)}`);
 
-          // Add the function call + output to input for next iteration
-          input = [
-            ...input,
-            ...response.output as any,
-            {
-              type: "function_call_output" as const,
-              call_id: fc.call_id,
-              output: result,
-            },
-          ];
+          toolOutputs.push({
+            type: "function_call_output" as const,
+            call_id: fc.call_id,
+            output: result,
+          });
         }
+
+        // Append response output + all tool results once
+        input = [
+          ...input,
+          ...(response.output as any),
+          ...toolOutputs,
+        ];
       }
 
       // If we exhausted iterations, return last known text or fallback
