@@ -83,33 +83,49 @@ export const AGENT_TOOLS = [
     type: "function" as const,
     name: "cancel_appointment",
     description:
-      "Cancela uma consulta existente do paciente. Peça confirmação antes de cancelar.",
+      "Cancela uma consulta existente do paciente. Pode usar o appointment_id OU a data e horário para localizar a consulta. Peça confirmação antes de cancelar.",
     parameters: {
       type: "object" as const,
       properties: {
         appointment_id: {
           type: "string" as const,
-          description: "ID da consulta a cancelar",
+          description: "ID da consulta a cancelar (opcional se informar date + time)",
+        },
+        date: {
+          type: "string" as const,
+          description: "Data da consulta no formato YYYY-MM-DD (usado para localizar a consulta quando não tiver o ID)",
+        },
+        time: {
+          type: "string" as const,
+          description: "Horário da consulta no formato HH:MM (usado junto com date)",
         },
         reason: {
           type: "string" as const,
           description: "Motivo do cancelamento",
         },
       },
-      required: ["appointment_id"] as string[],
+      required: [] as string[],
     },
   },
   {
     type: "function" as const,
     name: "reschedule_appointment",
     description:
-      "Remarca uma consulta existente para nova data/horário.",
+      "Remarca uma consulta existente para nova data/horário. Pode usar o appointment_id OU a data/horário atuais para localizar a consulta.",
     parameters: {
       type: "object" as const,
       properties: {
         appointment_id: {
           type: "string" as const,
-          description: "ID da consulta a remarcar",
+          description: "ID da consulta a remarcar (opcional se informar current_date + current_time)",
+        },
+        current_date: {
+          type: "string" as const,
+          description: "Data atual da consulta no formato YYYY-MM-DD (usado para localizar a consulta)",
+        },
+        current_time: {
+          type: "string" as const,
+          description: "Horário atual da consulta no formato HH:MM (usado junto com current_date)",
         },
         new_date: {
           type: "string" as const,
@@ -120,7 +136,7 @@ export const AGENT_TOOLS = [
           description: "Novo horário no formato HH:MM",
         },
       },
-      required: ["appointment_id", "new_date", "new_time"] as string[],
+      required: ["new_date", "new_time"] as string[],
     },
   },
   {
@@ -345,9 +361,25 @@ export async function executeTool(
 
     // ── Cancel appointment ────────────────────────────────
     case "cancel_appointment": {
-      const appointmentId = args.appointment_id as string;
+      let appointmentId = args.appointment_id as string | undefined;
 
-      // Verify appointment belongs to patient
+      // Look up by date+time if no appointment_id provided
+      if (!appointmentId && args.date) {
+        const query = supabase
+          .from("appointments")
+          .select("id, status")
+          .eq("patient_id", ctx.patientId)
+          .eq("organization_id", ctx.organizationId)
+          .eq("date", args.date as string)
+          .in("status", ["pending", "confirmed"]);
+        if (args.time) query.eq("time", args.time as string);
+        const { data: matches } = await query.limit(1).single();
+        if (matches) appointmentId = matches.id;
+      }
+
+      if (!appointmentId)
+        return JSON.stringify({ error: "Consulta não encontrada. Informe a data e horário da consulta." });
+
       const { data: apt } = await supabase
         .from("appointments")
         .select("id, status, patient_id")
@@ -384,7 +416,24 @@ export async function executeTool(
 
     // ── Reschedule appointment ────────────────────────────
     case "reschedule_appointment": {
-      const appointmentId = args.appointment_id as string;
+      let appointmentId = args.appointment_id as string | undefined;
+
+      // Look up by current_date+current_time if no appointment_id provided
+      if (!appointmentId && args.current_date) {
+        const query = supabase
+          .from("appointments")
+          .select("id, status")
+          .eq("patient_id", ctx.patientId)
+          .eq("organization_id", ctx.organizationId)
+          .eq("date", args.current_date as string)
+          .in("status", ["pending", "confirmed"]);
+        if (args.current_time) query.eq("time", args.current_time as string);
+        const { data: matches } = await query.limit(1).single();
+        if (matches) appointmentId = matches.id;
+      }
+
+      if (!appointmentId)
+        return JSON.stringify({ error: "Consulta não encontrada. Informe a data e horário atuais da consulta." });
 
       const { data: apt } = await supabase
         .from("appointments")
