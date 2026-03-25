@@ -6,6 +6,8 @@
         "name": "next"
       }
     ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "strictNullChecks": true,
     "paths": {
       "@/*": ["./*"]
