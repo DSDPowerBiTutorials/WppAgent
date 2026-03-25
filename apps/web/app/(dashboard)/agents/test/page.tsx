@@ -106,6 +106,7 @@ function AgentTestContent() {
         agent_id: selectedAgentId,
         history,
         message: text,
+        simulate_patient: simulatePatient,
       });
 
       setMessages((prev) => [
@@ -187,6 +188,19 @@ function AgentTestContent() {
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={simulatePatient}
+            onChange={(e) => setSimulatePatient(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+          />
+          <div>
+            <p className="font-medium text-gray-900">Simular paciente</p>
+            <p className="text-xs text-gray-500">Habilita ferramentas reais (agendamento, consultas, etc.)</p>
+          </div>
         </label>
 
         {selectedAgent && (
