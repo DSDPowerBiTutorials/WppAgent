@@ -19,9 +19,9 @@ import type {
 
 // ─── Clínica Conecta HTTP Client ─────────────────────────────
 
-const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 1000;
-const REQUEST_TIMEOUT_MS = 30_000;
+const MAX_RETRIES = 1;
+const BASE_DELAY_MS = 500;
+const REQUEST_TIMEOUT_MS = 8_000;
 
 export class ClinicaConectaClient {
   private baseUrl: string;
