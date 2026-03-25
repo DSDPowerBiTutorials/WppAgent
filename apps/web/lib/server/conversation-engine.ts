@@ -87,7 +87,10 @@ function buildFeatureInstructions(features: string[], config: Record<string, any
           parts.push(`- Duração padrão da consulta: ${cfg.slotDuration} minutos`);
         }
         if (cfg?.advanceDays) {
-          parts.push(`- Agendamento com até ${cfg.advanceDays} dias de antecedência`);
+          const maxDate = new Date();
+          maxDate.setDate(maxDate.getDate() + cfg.advanceDays);
+          const maxDateStr = maxDate.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+          parts.push(`- Agendamento permitido até ${maxDateStr} (${cfg.advanceDays} dias a partir de hoje). Qualquer data até essa data limite é VÁLIDA e deve ser aceita.`);
         }
         parts.push(`- Atende finais de semana: ${cfg?.allowWeekends ? "Sim" : "Não"}`);
         sections.push(
