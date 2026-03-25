@@ -2,7 +2,7 @@
 
 **Data do teste:** 25 de março de 2026  
 **Ambiente:** Produção — https://wpp-agent.vercel.app  
-**Branch:** `main` @ commit `b1814df`  
+**Branch:** `main` @ commit `bda64d8`  
 **Agente testado:** "Agente de Teste" (`7de0d5ed-41bd-4f02-9b33-d65648bfdf96`)  
 **Paciente de teste:** "Paciente Teste" (`f674a7db-13e4-42ac-a9fb-d45fed81b195`, `+5500000000000`)  
 **Modelo de IA:** GPT-4.1 (OpenAI Responses API com Function Calling)
@@ -13,14 +13,14 @@
 
 | Métrica | Valor |
 |---------|-------|
-| Total de testes | 10 |
-| Aprovados | **10/10** (100%) |
+| Total de testes | 20 |
+| Aprovados | **20/20** (100%) |
 | Reprovados | 0 |
-| Data-alvo do agendamento | 04/04/2026 (10 dias no futuro) |
-| Rodadas de teste executadas | 6 |
-| Bugs encontrados e corrigidos | 4 |
+| Datas-alvo testadas | 04/04/2026 (10 dias futuro) + 31/12/2026 (281 dias futuro) |
+| Rodadas de teste executadas | 9 |
+| Bugs encontrados e corrigidos | 5 |
 
-> **Resultado final: TODOS OS TESTES PASSARAM.** O fluxo completo de agendamento (criar → listar → remarcar → cancelar) funciona corretamente com persistência no banco de dados e registro de analytics.
+> **Resultado final: TODOS OS TESTES PASSARAM.** O fluxo completo de agendamento (criar → listar → remarcar → cancelar) funciona corretamente com persistência no banco de dados e registro de analytics. Testado tanto para datas próximas (10 dias) quanto distantes (281 dias).
 
 ---
 
@@ -171,6 +171,17 @@
 | **Causa raiz** | O model tem `max_output_tokens: 500` e histórico limitado; o UUID retornado no agendamento não era mantido no contexto ao pedir remarcação/cancelamento |
 | **Correção** | Ambas as ferramentas agora aceitam `date` + `time` como alternativa ao `appointment_id`. O código busca o appointment no banco pelo paciente + data + horário quando o UUID não é fornecido |
 
+### Bug 5 — GPT-4.1 calcula datas incorretamente com advanceDays
+| Campo | Detalhe |
+|-------|---------|
+| **Commit** | `bda64d8` |
+| **Severidade** | Crítico |
+| **Arquivo** | `apps/web/lib/server/conversation-engine.ts` |
+| **Sintoma** | Mesmo com `advanceDays: 365`, o agente recusava 31/12/2026 (281 dias no futuro) dizendo "está fora desse prazo" em 9/10 tentativas |
+| **Causa raiz** | O system prompt dizia "Agendamento com até 365 dias de antecedência" e o GPT-4.1 fazia aritmética errada: calculava 281 > 365 incorretamente, ou confundia a referência temporal |
+| **Correção** | Substituído o número de dias por uma data-limite calculada no código: `"Agendamento permitido até 25/03/2027 (365 dias a partir de hoje). Qualquer data até essa data limite é VÁLIDA e deve ser aceita."` |
+| **Verificação** | Após a correção, 10/10 testes para 31/12/2026 passaram com sucesso |
+
 ---
 
 ## 5. Evolução dos Testes por Rodada
@@ -183,6 +194,34 @@
 | 4 | 04/04/2026 | 5✅ 5❌ | Fallback automático no código não deployado a tempo |
 | 5 | 04/04/2026 | 7✅ 3❌ | CC desabilitada, tools locais funcionam, mas reschedule/cancel falhavam sem UUID |
 | **6** | **04/04/2026** | **10✅ 0❌** | **Todas as operações funcionando** |
+| 7 | 31/12/2026 | 1✅ 9❌ | GPT-4.1 calculando "281 dias > 365 dias" incorretamente |
+| 8 | 31/12/2026 | 3✅ 7⚠️ | Agente pedia confirmação antes de agendar (7 testes ficaram aguardando "Sim") |
+| **9** | **31/12/2026** | **10✅ 0❌** | **Script adaptado com fluxo de confirmação em 2 turnos** |
+
+---
+
+## 5b. Testes de Agendamento em Massa — 31/12/2026 (281 dias no futuro)
+
+> **10 agendamentos criados e confirmados no banco de dados** para uma data ~281 dias no futuro, validando que o sistema aceita datas distantes corretamente.
+
+| # | Especialidade | Médico | Horário | Resultado | DB Status | DB ID |
+|---|--------------|--------|---------|-----------|-----------|-------|
+| 1 | Clínica Geral | Dr. Silva | 08:00 | ✅ PASS | pending | `e2a1a4e3` |
+| 2 | Clínica Geral | Dr. Silva | 09:00 | ✅ PASS | pending | `2061b361` |
+| 3 | Cardiologia | Dr. Santos | 10:00 | ✅ PASS | pending | `5dd6407b` |
+| 4 | Cardiologia | Dr. Santos | 11:00 | ✅ PASS | pending | `3a44ecee` |
+| 5 | Dermatologia | Dra. Oliveira | 13:00 | ✅ PASS | pending | `8192f09b` |
+| 6 | Dermatologia | Dra. Oliveira | 14:00 | ✅ PASS | pending | `711a1acc` |
+| 7 | Clínica Geral | Dr. Silva | 15:00 | ✅ PASS | pending | `5adafb7c` |
+| 8 | Cardiologia | Dr. Santos | 16:00 | ✅ PASS | pending | `292feb0b` |
+| 9 | Dermatologia | Dra. Oliveira | 17:00 | ✅ PASS | pending | `da4fb6e0` |
+| 10 | Clínica Geral | Dr. Silva | 08:30 | ✅ PASS | pending | `61dc72d7` |
+
+**Cobertura:**
+- 3 especialidades testadas: Clínica Geral (4), Cardiologia (3), Dermatologia (3)
+- 3 médicos testados: Dr. Silva, Dr. Santos, Dra. Oliveira
+- 10 horários distintos: 08:00, 08:30, 09:00, 10:00, 11:00, 13:00, 14:00, 15:00, 16:00, 17:00
+- Dados de teste limpos do banco após validação
 
 ---
 
@@ -190,12 +229,12 @@
 
 | Arquivo | Alterações | Linhas |
 |---------|-----------|--------|
-| `apps/web/lib/server/conversation-engine.ts` | Injeção de data/hora atual no system prompt | +8 |
+| `apps/web/lib/server/conversation-engine.ts` | Injeção de data/hora atual no system prompt + data-limite calculada para advanceDays | +15 |
 | `apps/web/lib/server/agent-tools.ts` | Fallback CC→local + reschedule/cancel por data+hora | +129 |
 | `apps/web/lib/server/clinica-conecta/client.ts` | Redução de timeout e retries | +3 -3 |
 | `apps/web/lib/server/clinica-conecta/tools.ts` | Mensagens de erro com orientação de fallback | +14 -3 |
 
-**Total: 4 commits, 4 arquivos, +154 linhas adicionadas**
+**Total: 5 commits, 4 arquivos, +161 linhas adicionadas**
 
 ---
 
@@ -209,7 +248,7 @@
 | Tools ativas | 10 (locais) |
 | Duração do slot | 30 minutos |
 | Horário de atendimento | 08:00–18:00 |
-| Antecedência máxima | 30 dias |
+| Antecedência máxima | 365 dias (atualizado de 30 para suportar testes de longa data) |
 | Especialidades | Clínica Geral, Cardiologia, Dermatologia, Ortopedia, Pediatria, Ginecologia |
 
 ---
@@ -235,5 +274,6 @@ O fluxo completo de agendamento do WppAgent está **100% funcional em produção
 5. **Remarcar** consultas para novo horário (localizando por data/hora)
 6. **Cancelar** consultas (localizando por data/hora)
 7. **Registrar** todos os eventos de analytics (scheduled, rescheduled, cancelled)
+8. **Aceitar datas distantes** (testado até 281 dias no futuro com sucesso)
 
-Os 4 bugs encontrados durante os testes foram corrigidos e validados com sucesso.
+Os 5 bugs encontrados durante os 9 rodadas de testes foram corrigidos e validados com sucesso. Todos os dados de teste foram limpos do banco de dados após a conclusão.
