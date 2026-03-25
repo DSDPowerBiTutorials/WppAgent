@@ -3,7 +3,14 @@ import Credentials from "next-auth/providers/credentials";
 import { createClient } from "@supabase/supabase-js";
 import { authConfig } from "./auth.config";
 
-const supabase = createClient(
+// Auth client: used for signInWithPassword (session state changes after login)
+const supabaseAuth = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
+
+// Admin client: uses service_role key to bypass RLS for profile lookups
+const supabaseAdmin = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
@@ -25,12 +32,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         // Authenticate via Supabase Auth
         const { data: authData, error: authError } =
-          await supabase.auth.signInWithPassword({ email, password });
+          await supabaseAuth.auth.signInWithPassword({ email, password });
 
         if (authError || !authData.user) return null;
 
-        // Fetch user profile from public.users
-        const { data: dbUser } = await supabase
+        // Fetch user profile using admin client (bypasses RLS)
+        const { data: dbUser } = await supabaseAdmin
           .from("users")
           .select("id, name, email, organization_id, role")
           .eq("auth_id", authData.user.id)
