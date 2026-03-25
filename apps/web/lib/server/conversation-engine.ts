@@ -387,9 +387,11 @@ export class ConversationEngine {
     } catch (err: any) {
       const errMsg = err?.message || String(err);
       const errCode = err?.code || err?.status || "unknown";
-      console.error(`[ConversationEngine] Error (code=${errCode}): ${errMsg}`);
+      const errType = err?.constructor?.name || "Error";
+      console.error(`[ConversationEngine] Error (type=${errType}, code=${errCode}): ${errMsg}`);
       if (err?.stack) console.error(err.stack);
-      return "Desculpe, estou com uma dificuldade técnica no momento. Um atendente humano irá te ajudar em breve.";
+      // Include error details in response for debugging (will remove later)
+      return `Desculpe, estou com uma dificuldade técnica no momento. Um atendente humano irá te ajudar em breve. [DEBUG: ${errType}: ${errMsg.slice(0, 200)}]`;
     }
   }
 
