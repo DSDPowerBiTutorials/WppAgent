@@ -208,9 +208,28 @@ export async function executeTool(
   args: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<string> {
-  // Delegate cc_* tools to Clínica Conecta executor
+  // Delegate cc_* tools to Clínica Conecta executor, with automatic local fallback
   if (name.startsWith("cc_")) {
-    return executeClinicaConectaTool(name, args);
+    try {
+      const result = await executeClinicaConectaTool(name, args);
+      // Check if the result is an error that should trigger local fallback
+      const parsed = JSON.parse(result);
+      if (parsed.error) {
+        const localFallback = ccToLocalFallback(name, args, ctx);
+        if (localFallback) {
+          console.log(`[CC Fallback] ${name} failed, falling back to local tool`);
+          return executeTool(localFallback.name, localFallback.args, ctx);
+        }
+      }
+      return result;
+    } catch {
+      const localFallback = ccToLocalFallback(name, args, ctx);
+      if (localFallback) {
+        console.log(`[CC Fallback] ${name} threw, falling back to local tool`);
+        return executeTool(localFallback.name, localFallback.args, ctx);
+      }
+      return JSON.stringify({ error: "Sistema externo indisponível" });
+    }
   }
 
   const supabase = getSupabaseClient();
@@ -508,5 +527,44 @@ export async function executeTool(
 
     default:
       return JSON.stringify({ error: `Tool "${name}" não reconhecida` });
+  }
+}
+
+// ─── CC → Local tool fallback mapping ────────────────────────
+function ccToLocalFallback(
+  ccName: string,
+  args: Record<string, unknown>,
+  ctx: ToolContext
+): { name: string; args: Record<string, unknown> } | null {
+  switch (ccName) {
+    case "cc_check_availability":
+      return {
+        name: "check_availability",
+        args: { specialty: (args.specialty as string) || "Clínica Geral", date: args.date as string },
+      };
+    case "cc_create_appointment":
+      return {
+        name: "schedule_appointment",
+        args: {
+          specialty: (args.specialty as string) || "Clínica Geral",
+          doctor_name: (args.professional_name as string) || (args.professional_id as string) || "Médico",
+          date: args.date_key as string,
+          time: args.time as string,
+          notes: args.notes as string,
+        },
+      };
+    case "cc_cancel_appointment":
+      return { name: "cancel_appointment", args: { appointment_id: args.appointment_id as string, reason: args.cancelled_by as string } };
+    case "cc_reschedule_appointment":
+      return { name: "reschedule_appointment", args: { appointment_id: args.appointment_id as string, new_date: args.new_date as string, new_time: args.new_time as string } };
+    case "cc_confirm_appointment":
+      return { name: "confirm_appointment", args: { appointment_id: args.appointment_id as string } };
+    case "cc_list_appointments":
+      return { name: "get_patient_appointments", args: { include_past: false } };
+    case "cc_get_patient":
+    case "cc_search_patients":
+      return { name: "get_patient_info", args: {} };
+    default:
+      return null;
   }
 }
