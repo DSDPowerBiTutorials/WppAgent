@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { createClient } from "@supabase/supabase-js";
+import { authConfig } from "./auth.config";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -8,13 +9,7 @@ const supabase = createClient(
 );
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  pages: {
-    signIn: "/login",
-  },
-  session: {
-    strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours
-  },
+  ...authConfig,
   providers: [
     Credentials({
       name: "Email",
@@ -53,22 +48,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.userId = user.id;
-        token.organizationId = (user as any).organizationId;
-        token.role = (user as any).role;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        (session.user as any).id = token.userId;
-        (session.user as any).organizationId = token.organizationId;
-        (session.user as any).role = token.role;
-      }
-      return session;
-    },
-  },
 });
