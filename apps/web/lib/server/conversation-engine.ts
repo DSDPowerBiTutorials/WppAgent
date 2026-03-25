@@ -281,7 +281,13 @@ export class ConversationEngine {
       patientInstructions = `\n\n# CONTEXTO DO PACIENTE\nVocê está conversando com **${patient.patientName}**.\n- Chame o paciente pelo nome.\n- ID do paciente: ${patient.patientId}\n- Use as ferramentas disponíveis para consultar informações e executar ações no sistema (agendar, cancelar, remarcar consultas, etc.).\n- Sempre confirme os dados com o paciente antes de executar uma ação.`;
     }
 
-    return `${basePrompt}${patientInstructions}${featureInstructions}${voiceInstructions}${hoursInstructions}${buildClinicaConectaInstructions()}`;
+    // Inject current date so the model knows "today"
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Sao_Paulo" });
+    const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+    const currentDateInstruction = `\n\n# DATA E HORA ATUAL\nHoje é ${dateStr}, ${timeStr} (horário de Brasília).`;
+
+    return `${basePrompt}${currentDateInstruction}${patientInstructions}${featureInstructions}${voiceInstructions}${hoursInstructions}${buildClinicaConectaInstructions()}`;
   }
 
   private static toOpenAIMessages(
