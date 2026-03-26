@@ -79,19 +79,8 @@ function buildFeatureInstructions(features: string[], config: Record<string, any
         break;
       }
       case "scheduling": {
-        const parts: string[] = [];
-        if (cfg?.specialties?.length) {
-          parts.push(`- Especialidades disponíveis: ${cfg.specialties.join(", ")}`);
-        }
-        if (cfg?.advanceDays) {
-          const maxDate = new Date();
-          maxDate.setDate(maxDate.getDate() + cfg.advanceDays);
-          const maxDateStr = maxDate.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
-          parts.push(`- Agendamento permitido até ${maxDateStr} (${cfg.advanceDays} dias a partir de hoje). Qualquer data até essa data limite é VÁLIDA e deve ser aceita.`);
-        }
-        parts.push(`- Atende finais de semana: ${cfg?.allowWeekends ? "Sim" : "Não"}`);
         sections.push(
-          `## ${label}\nVocê pode agendar, reagendar e cancelar consultas. Use estas regras:\n${parts.join("\n")}\nSempre busque os horários disponíveis reais via ferramentas cc_* do Clínica Conecta. NUNCA calcule horários com base em duração de consulta.`
+          `## ${label}\nVocê pode agendar, reagendar e cancelar consultas.\nTODAS as informações (especialidades, profissionais, horários disponíveis, agendamentos) devem vir exclusivamente das ferramentas cc_* do Clínica Conecta. NUNCA invente ou calcule horários, durações ou disponibilidade.`
         );
         break;
       }
