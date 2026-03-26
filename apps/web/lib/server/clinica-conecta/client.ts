@@ -19,9 +19,9 @@ import type {
 
 // ─── Clínica Conecta HTTP Client ─────────────────────────────
 
-const MAX_RETRIES = 1;
+const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 500;
-const REQUEST_TIMEOUT_MS = 8_000;
+const REQUEST_TIMEOUT_MS = 15_000;
 
 export class ClinicaConectaClient {
   private baseUrl: string;
@@ -105,7 +105,7 @@ export class ClinicaConectaClient {
         clearTimeout(timeout);
 
         if (err.name === "AbortError") {
-          lastError = new Error("Clínica Conecta API: request timeout (30s)");
+          lastError = new Error(`Clínica Conecta API: request timeout (${REQUEST_TIMEOUT_MS / 1000}s)`);
         } else if (err.message?.startsWith("Clínica Conecta API:") && !err.message.includes("5")) {
           // 4xx already thrown above — don't retry
           throw err;

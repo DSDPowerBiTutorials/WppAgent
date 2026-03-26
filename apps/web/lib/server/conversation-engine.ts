@@ -215,11 +215,15 @@ function buildClinicaConectaInstructions(): string {
 
   return `\n\n---\n# INTEGRAÇÃO CLÍNICA CONECTA
 Use ferramentas cc_* para dados reais. NUNCA invente horários, nomes ou disponibilidade.
-Confirme dados antes de executar ações. Guarde IDs (especialidade, profissional, paciente) mencionados na conversa para reutilizar nas chamadas seguintes.
+Confirme dados antes de executar ações.
 
 ## Fluxo de agendamento
 cc_list_specialties → cc_list_professionals(specialty_id) → cc_check_available_dates(professional_id) → cc_check_availability(professional_id, date) → cc_create_appointment.
 IMPORTANTE: cc_check_available_dates retorna APENAS datas. Para obter os horários livres de uma data, SEMPRE chame cc_check_availability. Nunca apresente horários ao paciente sem antes chamar cc_check_availability.
+
+## Reutilização de IDs
+- Se o CONTEXTO DE CHAMADAS ANTERIORES contém IDs de profissionais ou especialidades, use-os DIRETAMENTE nas chamadas seguintes. NÃO re-consulte cc_list_specialties ou cc_list_professionals se os IDs já estão disponíveis no contexto.
+- Exemplo: se o contexto mostra professional_id "2660292d-...", use esse ID diretamente em cc_check_available_dates sem re-buscar.
 
 ## Regras críticas
 - NUNCA re-pergunte informações que o paciente já forneceu (especialidade, data, profissional). Extraia do contexto da conversa.
@@ -363,6 +367,12 @@ export class ConversationEngine {
           const result = await executeTool(fc.name, args, toolCtx!);
           console.log(`[Tool] ${fc.name} → ${result.slice(0, 200)}`);
 
+          // Track CC tool results for context persistence across rounds
+          if (fc.name.startsWith("cc_")) {
+            if (!toolCtx!._toolSummaries) toolCtx!._toolSummaries = [];
+            toolCtx!._toolSummaries.push(`${fc.name}(${JSON.stringify(args).slice(0, 150)}): ${result.slice(0, 500)}`);
+          }
+
           toolOutputs.push({
             type: "function_call_output" as const,
             call_id: fc.call_id,
@@ -416,10 +426,12 @@ export class ConversationEngine {
     const supabase = getSupabaseClient();
 
     // Load the most recent 20 messages (descending) then reverse to chronological order
+    // Exclude system messages (tool context) — they're loaded separately
     const { data: history } = await supabase
       .from("messages")
       .select("role, content")
       .eq("conversation_id", conversationId)
+      .not("role", "eq", "system")
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -430,11 +442,26 @@ export class ConversationEngine {
 
     // The user message is already stored in the DB by the caller,
     // so it's included in the loaded history. Don't append it again.
-    const systemPrompt = await this.getSystemPrompt(agentId, patient);
+    let systemPrompt = await this.getSystemPrompt(agentId, patient);
+
+    // Load recent tool context (system messages) so the model has IDs from previous rounds
+    const { data: toolContextMsgs } = await supabase
+      .from("messages")
+      .select("content")
+      .eq("conversation_id", conversationId)
+      .eq("role", "system")
+      .order("created_at", { ascending: false })
+      .limit(3);
+
+    if (toolContextMsgs?.length) {
+      const contextNote = toolContextMsgs.reverse().map(m => m.content).join("\n");
+      systemPrompt += `\n\n# CONTEXTO DE CHAMADAS ANTERIORES\nAbaixo estão resultados de ferramentas de interações anteriores nesta conversa. Use os IDs abaixo diretamente sem precisar re-consultar:\n${contextNote}`;
+    }
+
     const openaiMessages = this.toOpenAIMessages(messages);
 
     // Use tools only when we have patient context (real WhatsApp conversation)
-    const toolCtx = patient
+    const toolCtx: ToolContext | undefined = patient
       ? {
           organizationId: patient.organizationId,
           patientId: patient.patientId,
@@ -442,6 +469,18 @@ export class ConversationEngine {
         }
       : undefined;
 
-    return this.generateReply(systemPrompt, openaiMessages, toolCtx);
+    const reply = await this.generateReply(systemPrompt, openaiMessages, toolCtx);
+
+    // Persist tool context for next round if CC tools were called
+    if (toolCtx?._toolSummaries?.length) {
+      await supabase.from("messages").insert({
+        conversation_id: conversationId,
+        role: "system",
+        content: toolCtx._toolSummaries.join("\n"),
+        metadata: { type: "tool_context" },
+      });
+    }
+
+    return reply;
   }
 }

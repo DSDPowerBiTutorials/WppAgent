@@ -7,6 +7,8 @@ export interface ToolContext {
   organizationId: string;
   patientId: string;
   conversationId: string;
+  /** Internal: accumulates tool call summaries during generateReply */
+  _toolSummaries?: string[];
 }
 
 // ─── OpenAI function-tool definitions ────────────────────────
