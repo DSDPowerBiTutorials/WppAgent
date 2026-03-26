@@ -298,12 +298,10 @@ export async function executeClinicaConectaTool(
       }
 
       case "cc_list_appointments": {
+        // CC API only supports 'date' param (not date_from/date_to)
+        const dateFilter = (args.date_from as string | undefined) || (args.date_to as string | undefined);
         const raw = await client.getAppointments({
-          date_from: args.date_from as string | undefined,
-          date_to: args.date_to as string | undefined,
-          professional_id: args.professional_id as string | undefined,
-          patient_id: args.patient_id as string | undefined,
-          status: args.status as string | undefined,
+          date: dateFilter,
         });
         // CC API may ignore filters — apply client-side
         const result = raw.filter((a: any) => {
@@ -358,11 +356,7 @@ export async function executeClinicaConectaTool(
         // Fetch slots and existing appointments in parallel
         const [slotsRaw, appointments] = await Promise.all([
           client.getAvailableSlots(professionalId, date) as Promise<any>,
-          client.getAppointments({
-            professional_id: professionalId,
-            date_from: date,
-            date_to: date,
-          }),
+          client.getAppointments({ date }),
         ]);
 
         // API may return "availableSlots" or "slots" depending on version

@@ -32,17 +32,21 @@ export interface CCAppointment {
   patient_id: string;
   professional_id: string;
   date: string;
+  date_key?: string;
   time: string;
   status: string;
   specialty?: string;
   notes?: string;
   patient_name?: string;
   professional_name?: string;
+  patient?: { id: string; name: string; cpf?: string; phone?: string; cellphone?: string };
+  professional?: { id: string; name: string; crm?: string };
   created_at?: string;
   updated_at?: string;
 }
 
 export interface CCAppointmentFilters {
+  date?: string;
   date_from?: string;
   date_to?: string;
   professional_id?: string;
