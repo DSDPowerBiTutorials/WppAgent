@@ -168,7 +168,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_check_available_dates",
-    description: "Lista datas disponíveis do profissional nos próximos N dias.",
+    description: "Lista APENAS as datas com disponibilidade. Para ver os horários livres de uma data, use cc_check_availability.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -390,8 +390,11 @@ export async function executeClinicaConectaTool(
         const result = await client.getAvailableDates(
           args.professional_id as string,
           args.days_ahead as number | undefined
-        );
-        return JSON.stringify(result);
+        ) as any;
+        // Remove todaySlots — it contains unfiltered slots that include booked times.
+        // The model MUST use cc_check_availability to get accurate free slots for a specific date.
+        const { todaySlots, ...safeResult } = result;
+        return JSON.stringify(safeResult);
       }
 
       case "cc_list_professionals": {
