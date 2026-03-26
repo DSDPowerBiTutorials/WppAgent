@@ -229,10 +229,19 @@ function buildClinicaConectaInstructions(): string {
 
   return `\n\n---\n# INTEGRAÇÃO CLÍNICA CONECTA
 Use ferramentas cc_* para dados reais. NUNCA invente horários ou nomes.
-Confirme dados antes de executar ações. Cache IDs do contexto.
-Para agendamento: cc_list_specialties → cc_list_professionals(specialty_id) → cc_check_available_dates(professional_id) → cc_check_availability(professional_id, date) → cc_create_appointment.
-IMPORTANTE: Ao buscar especialidades, vários nomes são parecidos (ex: "Ortopedia", "Ortopedia e Traumatologia"). Se cc_list_professionals retornar vazio para uma especialidade, busque profissionais nas especialidades com nomes similares antes de dizer que não há profissionais. Exemplo: se "Ortopedia" não tem profissionais, tente "Ortopedia e Traumatologia".
-Sempre chame a ferramenta junto com a mensagem — nunca diga "vou verificar" sem chamar.`;
+Confirme dados antes de executar ações. Guarde IDs (especialidade, profissional, paciente) mencionados na conversa para reutilizar nas chamadas seguintes.
+
+## Fluxo de agendamento
+cc_list_specialties → cc_list_professionals(specialty_id) → cc_check_available_dates(professional_id) → cc_check_availability(professional_id, date) → cc_create_appointment.
+
+## Regras críticas
+- NUNCA re-pergunte informações que o paciente já forneceu (especialidade, data, profissional). Extraia do contexto da conversa.
+- Se o paciente já disse a especialidade, data ou profissional, AVANCE para o próximo passo da ferramenta sem perguntar novamente.
+- Quando houver MÚLTIPLOS profissionais, apresente TODOS com numeração para o paciente escolher. Nunca omita profissionais.
+- Se o paciente confirma com "sim", "ok", "pode ser", etc., prossiga com a ação — não reinicie o fluxo.
+- Ao buscar especialidades, nomes são parecidos (ex: "Ortopedia" vs "Ortopedia e Traumatologia"). Se cc_list_professionals retornar vazio, tente especialidades com nomes similares antes de dizer que não há profissionais.
+- Sempre chame a ferramenta junto com a mensagem — nunca diga "vou verificar" sem chamar.
+- Quando precisar do ID de um profissional/especialidade já mencionado, use cc_list_professionals ou cc_list_specialties para obtê-lo novamente se necessário, sem perguntar ao paciente.`;
 }
 
 export class ConversationEngine {
@@ -417,23 +426,23 @@ export class ConversationEngine {
   ): Promise<string | null> {
     const supabase = getSupabaseClient();
 
+    // Load the most recent 20 messages (descending) then reverse to chronological order
     const { data: history } = await supabase
       .from("messages")
       .select("role, content")
       .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(20);
 
-    const messages: ChatMessage[] = (history || []).map((msg: any) => ({
+    const messages: ChatMessage[] = (history || []).reverse().map((msg: any) => ({
       role: msg.role === "patient" ? ("user" as const) : ("assistant" as const),
       content: msg.content,
     }));
 
+    // The user message is already stored in the DB by the caller,
+    // so it's included in the loaded history. Don't append it again.
     const systemPrompt = await this.getSystemPrompt(agentId, patient);
-    const openaiMessages = this.toOpenAIMessages([
-      ...messages,
-      { role: "user", content: userMessage },
-    ]);
+    const openaiMessages = this.toOpenAIMessages(messages);
 
     // Use tools only when we have patient context (real WhatsApp conversation)
     const toolCtx = patient
