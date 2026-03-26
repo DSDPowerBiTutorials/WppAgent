@@ -211,9 +211,20 @@ export const AGENT_TOOLS = [
 ] as const;
 
 // ─── Active tools (local + Clínica Conecta when configured) ──
+// When CC is enabled, skip local tools that have CC equivalents to reduce token usage
+const CC_COVERED_LOCAL_TOOLS = new Set([
+  "check_availability",    // → cc_check_availability / cc_check_available_dates
+  "schedule_appointment",  // → cc_create_appointment
+  "cancel_appointment",    // → cc_cancel_appointment
+  "reschedule_appointment",// → cc_reschedule_appointment
+  "confirm_appointment",   // → cc_confirm_appointment
+  "get_patient_appointments", // → cc_list_appointments
+]);
+
 export function getActiveTools() {
   if (isClinicaConectaEnabled()) {
-    return [...AGENT_TOOLS, ...CLINICA_CONECTA_TOOLS];
+    const localOnly = AGENT_TOOLS.filter(t => !CC_COVERED_LOCAL_TOOLS.has(t.name));
+    return [...localOnly, ...CLINICA_CONECTA_TOOLS];
   }
   return [...AGENT_TOOLS];
 }

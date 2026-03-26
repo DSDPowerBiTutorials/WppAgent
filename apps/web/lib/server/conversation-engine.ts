@@ -228,30 +228,10 @@ function buildClinicaConectaInstructions(): string {
   if (!isClinicaConectaEnabled()) return "";
 
   return `\n\n---\n# INTEGRAÇÃO CLÍNICA CONECTA
-Você está integrado ao sistema Clínica Conecta. Use SEMPRE as ferramentas cc_* para consultar dados reais:
-- Use cc_list_specialties para listar especialidades disponíveis.
-- Use cc_list_professionals para listar médicos (pode filtrar por especialidade).
-- Use cc_check_availability para consultar horários livres de um profissional numa data.
-- Use cc_check_available_dates para saber em quais dias um profissional tem vaga.
-- Use cc_create_appointment para agendar (precisa de patient_id, professional_id, date_key e time).
-- Use cc_get_financials para consultas financeiras e faturas.
-- Use cc_get_patient_health_plan para informações de planos de saúde (Videx).
-- Use cc_query_knowledge para dúvidas sobre procedimentos, preparos e orientações.
-
-REGRAS IMPORTANTES:
-- NUNCA invente horários, nomes de médicos ou especialidades — sempre consulte via ferramentas.
-- Confirme dados com o paciente antes de executar ações (agendar, cancelar, remarcar).
-- Para dúvidas gerais da clínica, use cc_query_knowledge primeiro.
-
-OTIMIZAÇÃO DE CHAMADAS — MUITO IMPORTANTE:
-- Chame MÚLTIPLAS ferramentas simultaneamente quando possível (ex: cc_list_specialties e cc_list_professionals juntas).
-- Quando já souber o ID de uma especialidade ou profissional do contexto da conversa, NÃO busque novamente.
-- Para agendamento, siga este fluxo otimizado:
-  1. Se o paciente pedir uma especialidade, use cc_list_professionals com specialty_id diretamente (se já tiver o ID) OU cc_list_specialties + cc_list_professionals juntos.
-  2. Com o professional_id, use cc_check_available_dates para obter as datas.
-  3. Com a data escolhida, use cc_check_availability para os horários.
-  4. Confirme com o paciente e use cc_create_appointment.
-- NUNCA responda "vou verificar" sem chamar a ferramenta na mesma resposta. Sempre inclua a chamada de ferramenta junto com a mensagem.`;
+Use ferramentas cc_* para dados reais. NUNCA invente horários ou nomes.
+Confirme dados antes de executar ações. Cache IDs do contexto.
+Para agendamento: cc_list_specialties → cc_list_professionals(specialty_id) → cc_check_available_dates(professional_id) → cc_check_availability(professional_id, date) → cc_create_appointment.
+Sempre chame a ferramenta junto com a mensagem — nunca diga "vou verificar" sem chamar.`;
 }
 
 export class ConversationEngine {
@@ -335,13 +315,31 @@ export class ConversationEngine {
 
       for (let i = 0; i < (useTools ? MAX_TOOL_ITERATIONS : 1); i++) {
         console.log(`[ConversationEngine] Iteration ${i + 1}/${useTools ? MAX_TOOL_ITERATIONS : 1}, input items: ${input.length}`);
-        const response = await client.responses.create({
-          model: this.MODEL,
-          instructions: systemPrompt,
-          input,
-          max_output_tokens: 1024,
-          ...(useTools ? { tools: activeTools as any } : {}),
-        });
+
+        // Call OpenAI with retry on 429 rate limit
+        let response: any = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            response = await client.responses.create({
+              model: this.MODEL,
+              instructions: systemPrompt,
+              input,
+              max_output_tokens: 1024,
+              ...(useTools ? { tools: activeTools as any } : {}),
+            });
+            break;
+          } catch (apiErr: any) {
+            if (apiErr?.status === 429 && attempt < 2) {
+              const retryAfter = parseFloat(apiErr?.headers?.["retry-after"]) || (5 * (attempt + 1));
+              console.log(`[ConversationEngine] Rate limited (429). Retrying in ${retryAfter}s...`);
+              await new Promise(r => setTimeout(r, retryAfter * 1000));
+              continue;
+            }
+            throw apiErr;
+          }
+        }
+        if (!response) throw new Error("OpenAI API failed after 3 retries");
+
         console.log(`[ConversationEngine] OpenAI responded. output items: ${response.output.length}`);
 
         // Check if model wants to call tools
@@ -391,7 +389,7 @@ export class ConversationEngine {
       console.error(`[ConversationEngine] Error (type=${errType}, code=${errCode}): ${errMsg}`);
       if (err?.stack) console.error(err.stack);
       // Include error details in response for debugging (will remove later)
-      return `Desculpe, estou com uma dificuldade técnica no momento. Um atendente humano irá te ajudar em breve. [DEBUG: ${errType}: ${errMsg.slice(0, 200)}]`;
+      return `Desculpe, estou com uma dificuldade técnica no momento. Um atendente humano irá te ajudar em breve.`;
     }
   }
 
