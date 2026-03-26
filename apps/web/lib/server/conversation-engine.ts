@@ -231,6 +231,7 @@ function buildClinicaConectaInstructions(): string {
 Use ferramentas cc_* para dados reais. NUNCA invente horários ou nomes.
 Confirme dados antes de executar ações. Cache IDs do contexto.
 Para agendamento: cc_list_specialties → cc_list_professionals(specialty_id) → cc_check_available_dates(professional_id) → cc_check_availability(professional_id, date) → cc_create_appointment.
+IMPORTANTE: Ao buscar especialidades, vários nomes são parecidos (ex: "Ortopedia", "Ortopedia e Traumatologia"). Se cc_list_professionals retornar vazio para uma especialidade, busque profissionais nas especialidades com nomes similares antes de dizer que não há profissionais. Exemplo: se "Ortopedia" não tem profissionais, tente "Ortopedia e Traumatologia".
 Sempre chame a ferramenta junto com a mensagem — nunca diga "vou verificar" sem chamar.`;
 }
 
