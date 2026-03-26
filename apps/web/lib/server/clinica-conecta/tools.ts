@@ -6,8 +6,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_search_patients",
-    description:
-      "Busca pacientes no sistema da clínica por nome, CPF ou telefone.",
+    description: "Busca pacientes por nome, CPF ou telefone.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -26,8 +25,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_get_patient",
-    description:
-      "Retorna detalhes completos de um paciente pelo ID no sistema Clínica Conecta.",
+    description: "Retorna detalhes do paciente pelo ID.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -42,8 +40,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_create_patient",
-    description:
-      "Cadastra um novo paciente no sistema. Peça confirmação de todos os dados antes de criar.",
+    description: "Cadastra novo paciente. Confirme dados antes.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -60,8 +57,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_list_appointments",
-    description:
-      "Lista agendamentos/consultas com filtros opcionais: data, profissional, paciente, status.",
+    description: "Lista agendamentos com filtros de data, profissional, paciente e status.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -80,8 +76,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_create_appointment",
-    description:
-      "Agenda uma nova consulta. Confirme profissional, data e horário com o paciente antes.",
+    description: "Agenda consulta. Confirme dados antes.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -97,7 +92,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_confirm_appointment",
-    description: "Confirma a presença do paciente em um agendamento existente.",
+    description: "Confirma presença em agendamento.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -112,8 +107,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_cancel_appointment",
-    description:
-      "Cancela um agendamento existente. Peça confirmação do paciente antes de cancelar.",
+    description: "Cancela agendamento. Confirme antes.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -132,7 +126,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_reschedule_appointment",
-    description: "Remarca um agendamento para nova data e/ou horário.",
+    description: "Remarca agendamento para nova data/hora.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -155,8 +149,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_check_availability",
-    description:
-      "Verifica horários livres de um profissional em uma data específica.",
+    description: "Verifica horários livres do profissional na data.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -175,8 +168,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_check_available_dates",
-    description:
-      "Lista datas disponíveis de um profissional nos próximos N dias.",
+    description: "Lista datas disponíveis do profissional nos próximos N dias.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -195,8 +187,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_list_professionals",
-    description:
-      "Lista profissionais (médicos) da clínica, com filtro opcional por especialidade.",
+    description: "Lista profissionais, filtrando por especialidade.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -211,8 +202,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_list_specialties",
-    description:
-      "Lista todas as especialidades médicas disponíveis na clínica.",
+    description: "Lista especialidades disponíveis.",
     parameters: {
       type: "object" as const,
       properties: {},
@@ -222,8 +212,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_get_financials",
-    description:
-      "Consulta faturas e informações financeiras. Pode filtrar por paciente, status e período.",
+    description: "Consulta faturas. Filtra por paciente, status e período.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -241,8 +230,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_get_patient_health_plan",
-    description:
-      "Consulta os planos de saúde (Videx) vinculados a um paciente.",
+    description: "Consulta planos de saúde do paciente.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -257,8 +245,7 @@ export const CLINICA_CONECTA_TOOLS = [
   {
     type: "function" as const,
     name: "cc_query_knowledge",
-    description:
-      "Busca na base de conhecimento da clínica (RAG). Use para dúvidas sobre procedimentos, preparos, orientações, políticas e informações gerais da clínica.",
+    description: "Busca na base de conhecimento da clínica (procedimentos, preparos, políticas).",
     parameters: {
       type: "object" as const,
       properties: {

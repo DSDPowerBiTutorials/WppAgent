@@ -236,7 +236,7 @@ Sempre chame a ferramenta junto com a mensagem — nunca diga "vou verificar" se
 
 export class ConversationEngine {
   private static openai: OpenAI | null = null;
-  private static MODEL = process.env.OPENAI_MODEL || "gpt-4.1";
+  private static MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 
   private static getClient(): OpenAI {
     if (!this.openai) {

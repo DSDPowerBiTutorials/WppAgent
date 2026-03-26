@@ -14,8 +14,7 @@ export const AGENT_TOOLS = [
   {
     type: "function" as const,
     name: "get_patient_info",
-    description:
-      "Retorna informações do paciente atual: nome, telefone, e-mail, data de nascimento, CPF e anotações.",
+    description: "Retorna dados do paciente: nome, telefone, e-mail, nascimento, CPF, notas.",
     parameters: {
       type: "object" as const,
       properties: {},
@@ -158,8 +157,7 @@ export const AGENT_TOOLS = [
   {
     type: "function" as const,
     name: "transfer_to_human",
-    description:
-      "Transfere a conversa para um atendente humano. Use quando não puder resolver o pedido do paciente.",
+    description: "Transfere conversa para atendente humano.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -174,8 +172,7 @@ export const AGENT_TOOLS = [
   {
     type: "function" as const,
     name: "search_exams",
-    description:
-      "Busca exames e procedimentos disponíveis na clínica pelo nome ou categoria. Use quando o paciente perguntar sobre exames, procedimentos ou serviços disponíveis.",
+    description: "Busca exames/procedimentos disponíveis por nome ou categoria.",
     parameters: {
       type: "object" as const,
       properties: {
@@ -195,8 +192,7 @@ export const AGENT_TOOLS = [
   {
     type: "function" as const,
     name: "get_exam_details",
-    description:
-      "Retorna detalhes completos de um exame: preparo necessário, se precisa de pedido médico, e observações. Use quando o paciente perguntar sobre preparo ou requisitos de um exame específico.",
+    description: "Detalhes de um exame: preparo, pedido médico, observações.",
     parameters: {
       type: "object" as const,
       properties: {
