@@ -225,7 +225,7 @@ function buildClinicaConectaInstructions(): string {
   if (!isClinicaConectaEnabled()) return "";
 
   return `\n\n---\n# INTEGRAÇÃO CLÍNICA CONECTA
-Use ferramentas cc_* para dados reais. NUNCA invente horários ou nomes.
+Use ferramentas cc_* para dados reais. NUNCA invente horários, nomes ou disponibilidade.
 Confirme dados antes de executar ações. Guarde IDs (especialidade, profissional, paciente) mencionados na conversa para reutilizar nas chamadas seguintes.
 
 ## Fluxo de agendamento
@@ -238,7 +238,9 @@ cc_list_specialties → cc_list_professionals(specialty_id) → cc_check_availab
 - Se o paciente confirma com "sim", "ok", "pode ser", etc., prossiga com a ação — não reinicie o fluxo.
 - Ao buscar especialidades, nomes são parecidos (ex: "Ortopedia" vs "Ortopedia e Traumatologia"). Se cc_list_professionals retornar vazio, tente especialidades com nomes similares antes de dizer que não há profissionais.
 - Sempre chame a ferramenta junto com a mensagem — nunca diga "vou verificar" sem chamar.
-- Quando precisar do ID de um profissional/especialidade já mencionado, use cc_list_professionals ou cc_list_specialties para obtê-lo novamente se necessário, sem perguntar ao paciente.`;
+- Quando precisar do ID de um profissional/especialidade já mencionado, use cc_list_professionals ou cc_list_specialties para obtê-lo novamente se necessário, sem perguntar ao paciente.
+- JAMAIS sugira um horário específico sem ter recebido os dados de cc_check_availability. Se a ferramenta retornar erro, diga ao paciente que não foi possível verificar a disponibilidade no momento e peça para tentar novamente em instantes.
+- Só ofereça para agendar em horários que constam na lista "availableSlots" retornada por cc_check_availability. Horários que NÃO estão nessa lista estão OCUPADOS e não devem ser oferecidos.`;
 }
 
 export class ConversationEngine {

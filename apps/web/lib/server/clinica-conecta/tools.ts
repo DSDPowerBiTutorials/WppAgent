@@ -434,21 +434,9 @@ export async function executeClinicaConectaTool(
     }
   } catch (err: any) {
     console.error(`[Clínica Conecta Tool] ${name} error:`, err.message);
-    // Guide the model to fall back to local tools when CC is unavailable
-    const localEquivalent: Record<string, string> = {
-      cc_check_availability: "check_availability",
-      cc_create_appointment: "schedule_appointment",
-      cc_cancel_appointment: "cancel_appointment",
-      cc_reschedule_appointment: "reschedule_appointment",
-      cc_confirm_appointment: "confirm_appointment",
-      cc_list_appointments: "get_patient_appointments",
-      cc_search_patients: "get_patient_info",
-      cc_get_patient: "get_patient_info",
-    };
-    const fallback = localEquivalent[name];
-    const fallbackMsg = fallback
-      ? ` O sistema Clínica Conecta está indisponível. Use a ferramenta local "${fallback}" para realizar esta operação.`
-      : " O sistema Clínica Conecta está temporariamente indisponível. Tente usar as ferramentas locais disponíveis.";
-    return JSON.stringify({ error: err.message + fallbackMsg });
+    return JSON.stringify({
+      error: err.message,
+      instrucao: "O sistema Clínica Conecta está temporariamente indisponível. Informe ao paciente que não foi possível verificar a informação no momento e peça para tentar novamente em instantes. NÃO invente dados, horários ou disponibilidade."
+    });
   }
 }
