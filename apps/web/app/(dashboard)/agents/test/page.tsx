@@ -12,11 +12,13 @@ import { api } from "@/lib/api";
 
 type ChatMessage = TestChatMessage & { id: string };
 
-function buildWelcomeMessage(agentName: string): ChatMessage {
+function buildWelcomeMessage(agentName: string, simulate: boolean): ChatMessage {
   return {
     id: "welcome",
     role: "assistant",
-    content: `Olá! Eu sou o ${agentName}. Este é um chat de teste com IA real. As mensagens desta sessão não são salvas no banco.`,
+    content: simulate
+      ? `Olá! Eu sou o ${agentName}. Este é um chat de teste com IA real e ferramentas ativas. As mensagens são salvas em uma conversa de teste.`
+      : `Olá! Eu sou o ${agentName}. Este é um chat de teste com IA real. As mensagens desta sessão não são salvas no banco.`,
   };
 }
 
@@ -45,7 +47,7 @@ function AgentTestContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [simulatePatient, setSimulatePatient] = useState(false);
+  const [simulatePatient, setSimulatePatient] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedAgent = agents.find((agent) => agent.id === selectedAgentId);
@@ -66,9 +68,9 @@ function AgentTestContent() {
 
   useEffect(() => {
     if (!selectedAgent) return;
-    setMessages([buildWelcomeMessage(selectedAgent.name)]);
+    setMessages([buildWelcomeMessage(selectedAgent.name, simulatePatient)]);
     setInput("");
-  }, [selectedAgent?.id]);
+  }, [selectedAgent?.id, simulatePatient]);
 
   const handleReset = async () => {
     if (!selectedAgent) return;
@@ -79,7 +81,7 @@ function AgentTestContent() {
         // ignore reset errors
       }
     }
-    setMessages([buildWelcomeMessage(selectedAgent.name)]);
+    setMessages([buildWelcomeMessage(selectedAgent.name, simulatePatient)]);
     setInput("");
   };
 

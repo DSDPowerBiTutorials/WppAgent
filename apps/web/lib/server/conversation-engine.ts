@@ -398,7 +398,9 @@ export class ConversationEngine {
     history: ChatMessage[],
     userMessage: string
   ): Promise<string | null> {
-    const systemPrompt = await this.getSystemPrompt(agentId);
+    let systemPrompt = await this.getSystemPrompt(agentId);
+    // Strip CC integration instructions since tools are not available in test mode
+    systemPrompt = systemPrompt.replace(/\n\n---\n# INTEGRAÇÃO CLÍNICA CONECTA[\s\S]*$/, "");
     const messages = this.toOpenAIMessages([
       ...history,
       { role: "user", content: userMessage },
