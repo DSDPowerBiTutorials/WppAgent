@@ -1,4 +1,5 @@
 import { getClinicaConectaClient } from "./index";
+import { findRelatedSpecialtyIds } from "./specialty-aliases";
 
 // ─── Clínica Conecta Tool Definitions (OpenAI function calling) ──
 
@@ -398,9 +399,43 @@ export async function executeClinicaConectaTool(
       }
 
       case "cc_list_professionals": {
+        const specId = args.specialty_id as string | undefined;
         const result = await client.getProfessionals({
-          specialty_id: args.specialty_id as string | undefined,
+          specialty_id: specId,
         });
+
+        // If we got results or no specialty filter, return as-is
+        if (result.length > 0 || !specId) {
+          return JSON.stringify(result);
+        }
+
+        // 0 results — try to find professionals in related specialties
+        const allSpecialties = await client.getSpecialties();
+        const relatedIds = findRelatedSpecialtyIds(specId, allSpecialties);
+
+        if (relatedIds.length === 0) {
+          return JSON.stringify(result);
+        }
+
+        const relatedProfessionals: any[] = [];
+        const relatedSpecNames: string[] = [];
+        for (const relId of relatedIds) {
+          const profs = await client.getProfessionals({ specialty_id: relId });
+          if (profs.length > 0) {
+            const specName = allSpecialties.find((s) => s.id === relId)?.name;
+            if (specName) relatedSpecNames.push(specName);
+            relatedProfessionals.push(...profs);
+          }
+        }
+
+        if (relatedProfessionals.length > 0) {
+          const originalName = allSpecialties.find((s) => s.id === specId)?.name ?? specId;
+          return JSON.stringify({
+            nota: `Nenhum profissional encontrado para "${originalName}". Profissionais encontrados em especialidades relacionadas: ${relatedSpecNames.join(", ")}.`,
+            professionals: relatedProfessionals,
+          });
+        }
+
         return JSON.stringify(result);
       }
 
