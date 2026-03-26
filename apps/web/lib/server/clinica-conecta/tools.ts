@@ -298,12 +298,22 @@ export async function executeClinicaConectaTool(
       }
 
       case "cc_list_appointments": {
-        const result = await client.getAppointments({
+        const raw = await client.getAppointments({
           date_from: args.date_from as string | undefined,
           date_to: args.date_to as string | undefined,
           professional_id: args.professional_id as string | undefined,
           patient_id: args.patient_id as string | undefined,
           status: args.status as string | undefined,
+        });
+        // CC API may ignore filters — apply client-side
+        const result = raw.filter((a: any) => {
+          const d = a.date_key || a.date;
+          if (args.date_from && d < (args.date_from as string)) return false;
+          if (args.date_to && d > (args.date_to as string)) return false;
+          if (args.professional_id && a.professional_id !== args.professional_id) return false;
+          if (args.patient_id && a.patient_id !== args.patient_id) return false;
+          if (args.status && a.status !== args.status) return false;
+          return true;
         });
         return JSON.stringify(result);
       }
@@ -358,11 +368,16 @@ export async function executeClinicaConectaTool(
         // API may return "availableSlots" or "slots" depending on version
         const allSlots: string[] = slotsRaw.availableSlots || slotsRaw.slots || [];
 
-        // Filter out slots that already have active appointments
+        // CC API ignores date/professional filters — filter client-side
         const bookedTimes = new Set(
           appointments
-            .filter((a) => a.status !== "cancelado" && a.status !== "cancelled")
-            .map((a) => a.time?.slice(0, 5)) // normalize "HH:MM"
+            .filter((a: any) =>
+              a.status !== "cancelado" &&
+              a.status !== "cancelled" &&
+              (a.date_key || a.date) === date &&
+              a.professional_id === professionalId
+            )
+            .map((a: any) => a.time?.slice(0, 5))
         );
 
         const filteredSlots = allSlots.filter(

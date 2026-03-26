@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Bot, Loader2, RotateCcw, Send, Sparkles, User, Stethoscope } from "lucide-react";
+import { ArrowLeft, Bot, Loader2, RotateCcw, Send, Sparkles, User, Stethoscope, ClipboardCopy } from "lucide-react";
 import clsx from "clsx";
 import type { TestChatMessage, TestChatResult } from "@repo/shared/types";
 import { useToast } from "@/components/ui/toast";
@@ -83,6 +83,18 @@ function AgentTestContent() {
     }
     setMessages([buildWelcomeMessage(selectedAgent.name, simulatePatient)]);
     setInput("");
+  };
+
+  const [copied, setCopied] = useState(false);
+  const handleCopyConversation = () => {
+    const lines = messages.map((m) => {
+      const label = m.role === "user" ? "Paciente" : "Agente";
+      return `${label}: ${m.content}`;
+    });
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   const handleSend = async () => {
@@ -257,14 +269,25 @@ function AgentTestContent() {
               <p className="text-xs text-gray-500">Sessão efêmera com IA real</p>
             </div>
           </div>
-          <button
-            onClick={handleReset}
-            disabled={!selectedAgent || sending}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RotateCcw size={14} />
-            Reiniciar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopyConversation}
+              disabled={messages.length <= 1}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Copiar conversa"
+            >
+              <ClipboardCopy size={14} />
+              {copied ? "Copiado!" : "Copiar"}
+            </button>
+            <button
+              onClick={handleReset}
+              disabled={!selectedAgent || sending}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RotateCcw size={14} />
+              Reiniciar
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto bg-gray-50 p-5">

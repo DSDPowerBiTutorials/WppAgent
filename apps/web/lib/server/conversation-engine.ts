@@ -83,9 +83,6 @@ function buildFeatureInstructions(features: string[], config: Record<string, any
         if (cfg?.specialties?.length) {
           parts.push(`- Especialidades disponíveis: ${cfg.specialties.join(", ")}`);
         }
-        if (cfg?.slotDuration) {
-          parts.push(`- Duração padrão da consulta: ${cfg.slotDuration} minutos`);
-        }
         if (cfg?.advanceDays) {
           const maxDate = new Date();
           maxDate.setDate(maxDate.getDate() + cfg.advanceDays);
@@ -94,7 +91,7 @@ function buildFeatureInstructions(features: string[], config: Record<string, any
         }
         parts.push(`- Atende finais de semana: ${cfg?.allowWeekends ? "Sim" : "Não"}`);
         sections.push(
-          `## ${label}\nVocê pode agendar, reagendar e cancelar consultas. Use estas regras:\n${parts.join("\n")}\nPergunte ao paciente a especialidade desejada, data e horário de preferência.`
+          `## ${label}\nVocê pode agendar, reagendar e cancelar consultas. Use estas regras:\n${parts.join("\n")}\nSempre busque os horários disponíveis reais via ferramentas cc_* do Clínica Conecta. NUNCA calcule horários com base em duração de consulta.`
         );
         break;
       }
