@@ -389,7 +389,7 @@ export class ConversationEngine {
       console.error(`[ConversationEngine] Error (type=${errType}, code=${errCode}): ${errMsg}`);
       if (err?.stack) console.error(err.stack);
       // Include error details in response for debugging (will remove later)
-      return `Desculpe, estou com uma dificuldade técnica no momento. Um atendente humano irá te ajudar em breve.`;
+      return `Desculpe, estou com uma dificuldade técnica no momento. Um atendente humano irá te ajudar em breve. [DBG:${errCode}:${errMsg.slice(0,200)}]`;
     }
   }
 
