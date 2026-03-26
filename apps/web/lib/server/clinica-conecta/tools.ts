@@ -342,11 +342,39 @@ export async function executeClinicaConectaTool(
       }
 
       case "cc_check_availability": {
-        const result = await client.getAvailableSlots(
-          args.professional_id as string,
-          args.date as string
+        const professionalId = args.professional_id as string;
+        const date = args.date as string;
+
+        // Fetch slots and existing appointments in parallel
+        const [slotsRaw, appointments] = await Promise.all([
+          client.getAvailableSlots(professionalId, date) as Promise<any>,
+          client.getAppointments({
+            professional_id: professionalId,
+            date_from: date,
+            date_to: date,
+          }),
+        ]);
+
+        // API may return "availableSlots" or "slots" depending on version
+        const allSlots: string[] = slotsRaw.availableSlots || slotsRaw.slots || [];
+
+        // Filter out slots that already have active appointments
+        const bookedTimes = new Set(
+          appointments
+            .filter((a) => a.status !== "cancelado" && a.status !== "cancelled")
+            .map((a) => a.time?.slice(0, 5)) // normalize "HH:MM"
         );
-        return JSON.stringify(result);
+
+        const filteredSlots = allSlots.filter(
+          (slot: string) => !bookedTimes.has(slot)
+        );
+
+        return JSON.stringify({
+          professionalId: slotsRaw.professionalId || professionalId,
+          date: slotsRaw.date || date,
+          availableSlots: filteredSlots,
+          count: filteredSlots.length,
+        });
       }
 
       case "cc_check_available_dates": {
